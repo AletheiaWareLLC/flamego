@@ -38,7 +38,7 @@ func (i *LoadC) Store(x flamego.Context, a uint64) {
 }
 
 func (i *LoadC) Retire(x flamego.Context) {
-	// Do Nothing
+	x.IncrementProgramCounter()
 }
 
 func (i *LoadC) String() string {
