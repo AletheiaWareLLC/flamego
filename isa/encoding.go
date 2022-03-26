@@ -108,7 +108,7 @@ func Decode(opcode uint32) flamego.Instruction {
 		return NewJump(cc, b, o, r)
 	} else if (opcode >> 29) == 0x1 {
 		o := (opcode >> 10) & Width17Bit
-		a := flamego.Register(opcode >> Width5Bit & WidthRegister)
+		a := flamego.Register((opcode >> 5) & WidthRegister)
 		r := flamego.Register(opcode & WidthRegister)
 		switch (opcode >> 27) & Width2Bit {
 		case 0:
@@ -121,10 +121,10 @@ func Decode(opcode uint32) flamego.Instruction {
 			return NewFlush(a, o)
 		}
 	} else if (opcode >> 28) == 0x1 {
-		s2 := flamego.Register(opcode >> Width10Bit & WidthRegister)
-		s1 := flamego.Register(opcode >> Width5Bit & WidthRegister)
+		s2 := flamego.Register((opcode >> 10) & WidthRegister)
+		s1 := flamego.Register((opcode >> 5) & WidthRegister)
 		d := flamego.Register(opcode & WidthRegister)
-		switch opcode >> 24 {
+		switch (opcode >> 24) & Width4Bit {
 		case 0:
 			return NewNot(s1, d)
 		case 1:
@@ -150,13 +150,13 @@ func Decode(opcode uint32) flamego.Instruction {
 		}
 	} else if (opcode >> 26) == 0x1 {
 		r := flamego.Register(opcode & WidthRegister)
-		if (opcode >> 25) == 0x1 {
+		if (opcode>>25)&Width1Bit == 0x1 {
 			return NewPop(r)
 		}
 		return NewPush(r)
 	} else if (opcode >> 25) == 0x1 {
 		r := flamego.Register(opcode & WidthRegister)
-		if (opcode >> 24) == 0x1 {
+		if (opcode>>24)&Width1Bit == 0x1 {
 			return NewReturn(r)
 		}
 		return NewCall(r)
@@ -180,6 +180,6 @@ func Decode(opcode uint32) flamego.Instruction {
 			return NewUninterrupt(flamego.Register(opcode & WidthRegister))
 		}
 	}
-	panic(fmt.Sprintf("Unrecognized Opcode: 0x%016x\n", uint64(opcode)))
+	panic(fmt.Sprintf("Unrecognized Opcode: 0x%016x %032b\n", uint32(opcode), uint32(opcode)))
 	return NewInterrupt(flamego.InterruptUnsupportedOperationError)
 }
