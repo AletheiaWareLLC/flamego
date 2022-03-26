@@ -55,7 +55,7 @@ func (a *Jump) EmittedSize() uint32 {
 func (a *Jump) Instruction() flamego.Instruction {
 	o := a.label.RelativeAddress(a.address)
 	d := isa.JumpForward
-	if o < 0 {
+	if o <= 0 {
 		d = isa.JumpBackward
 		o = -o
 	}

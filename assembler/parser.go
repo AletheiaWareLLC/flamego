@@ -173,7 +173,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		return intermediate.NewJump(isa.ConditionCodeEZ, l, r, p.matchOptionalComment()), nil
+		return intermediate.NewJump(isa.JumpEZ, l, r, p.matchOptionalComment()), nil
 	case "jnz":
 		l, err := p.matchLabel()
 		if err != nil {
@@ -183,7 +183,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		return intermediate.NewJump(isa.ConditionCodeNZ, l, r, p.matchOptionalComment()), nil
+		return intermediate.NewJump(isa.JumpNZ, l, r, p.matchOptionalComment()), nil
 	case "jle":
 		l, err := p.matchLabel()
 		if err != nil {
@@ -193,7 +193,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		return intermediate.NewJump(isa.ConditionCodeLE, l, r, p.matchOptionalComment()), nil
+		return intermediate.NewJump(isa.JumpLE, l, r, p.matchOptionalComment()), nil
 	case "jlz":
 		l, err := p.matchLabel()
 		if err != nil {
@@ -203,7 +203,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		return intermediate.NewJump(isa.ConditionCodeLZ, l, r, p.matchOptionalComment()), nil
+		return intermediate.NewJump(isa.JumpLZ, l, r, p.matchOptionalComment()), nil
 	case "call":
 		a, err := p.matchRegister()
 		if err != nil {

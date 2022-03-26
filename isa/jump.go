@@ -8,21 +8,21 @@ import (
 type JumpConditionCode uint8
 
 const (
-	ConditionCodeEZ JumpConditionCode = iota
-	ConditionCodeNZ
-	ConditionCodeLE
-	ConditionCodeLZ
+	JumpEZ JumpConditionCode = iota
+	JumpNZ
+	JumpLE
+	JumpLZ
 )
 
 func (i JumpConditionCode) String() string {
 	switch i {
-	case ConditionCodeEZ:
+	case JumpEZ:
 		return "ez"
-	case ConditionCodeNZ:
+	case JumpNZ:
 		return "nz"
-	case ConditionCodeLE:
+	case JumpLE:
 		return "le"
-	case ConditionCodeLZ:
+	case JumpLZ:
 		return "lz"
 	}
 	return "Unrecognized Jump Condition Code"
@@ -69,13 +69,13 @@ func (i *Jump) Load(x flamego.Context) (uint64, uint64, uint64) {
 func (i *Jump) Execute(x flamego.Context, a, b, c uint64) uint64 {
 	jump := false
 	switch i.ConditionCode {
-	case ConditionCodeEZ:
+	case JumpEZ:
 		jump = b == 0
-	case ConditionCodeNZ:
+	case JumpNZ:
 		jump = b != 0
-	case ConditionCodeLE:
+	case JumpLE:
 		jump = b <= 0
-	case ConditionCodeLZ:
+	case JumpLZ:
 		jump = b < 0
 	}
 	if jump {

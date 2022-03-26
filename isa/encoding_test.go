@@ -45,6 +45,44 @@ func TestEncoding(t *testing.T) {
 		})
 	})
 	t.Run("ControlFlow", func(t *testing.T) {
+		t.Run("Jump", func(t *testing.T) {
+			t.Run("Forward", func(t *testing.T) {
+				t.Run("EZ", func(t *testing.T) {
+					opcode := isa.Encode(isa.NewJump(isa.JumpEZ, isa.JumpForward, 22, flamego.R31))
+					assert.Equal(t, "01000000000000000000001011011111", fmt.Sprintf("%032b", opcode))
+				})
+				t.Run("NZ", func(t *testing.T) {
+					opcode := isa.Encode(isa.NewJump(isa.JumpNZ, isa.JumpForward, 22, flamego.R31))
+					assert.Equal(t, "01010000000000000000001011011111", fmt.Sprintf("%032b", opcode))
+				})
+				t.Run("LE", func(t *testing.T) {
+					opcode := isa.Encode(isa.NewJump(isa.JumpLE, isa.JumpForward, 22, flamego.R31))
+					assert.Equal(t, "01100000000000000000001011011111", fmt.Sprintf("%032b", opcode))
+				})
+				t.Run("LZ", func(t *testing.T) {
+					opcode := isa.Encode(isa.NewJump(isa.JumpLZ, isa.JumpForward, 22, flamego.R31))
+					assert.Equal(t, "01110000000000000000001011011111", fmt.Sprintf("%032b", opcode))
+				})
+			})
+			t.Run("Backward", func(t *testing.T) {
+				t.Run("EZ", func(t *testing.T) {
+					opcode := isa.Encode(isa.NewJump(isa.JumpEZ, isa.JumpBackward, 22, flamego.R31))
+					assert.Equal(t, "01001000000000000000001011011111", fmt.Sprintf("%032b", opcode))
+				})
+				t.Run("NZ", func(t *testing.T) {
+					opcode := isa.Encode(isa.NewJump(isa.JumpNZ, isa.JumpBackward, 22, flamego.R31))
+					assert.Equal(t, "01011000000000000000001011011111", fmt.Sprintf("%032b", opcode))
+				})
+				t.Run("LE", func(t *testing.T) {
+					opcode := isa.Encode(isa.NewJump(isa.JumpLE, isa.JumpBackward, 22, flamego.R31))
+					assert.Equal(t, "01101000000000000000001011011111", fmt.Sprintf("%032b", opcode))
+				})
+				t.Run("LZ", func(t *testing.T) {
+					opcode := isa.Encode(isa.NewJump(isa.JumpLZ, isa.JumpBackward, 22, flamego.R31))
+					assert.Equal(t, "01111000000000000000001011011111", fmt.Sprintf("%032b", opcode))
+				})
+			})
+		})
 		// TODO
 		/*
 		   Jump
@@ -124,6 +162,94 @@ func TestDecoding(t *testing.T) {
 			inst, ok := isa.Decode(uint32(opcode)).(*isa.Uninterrupt)
 			assert.True(t, ok)
 			assert.Equal(t, flamego.R31, inst.AddressRegister)
+		})
+	})
+	t.Run("ControlFlow", func(t *testing.T) {
+		t.Run("Jump", func(t *testing.T) {
+			t.Run("Forward", func(t *testing.T) {
+				t.Run("EZ", func(t *testing.T) {
+					opcode, err := strconv.ParseUint("01000000000000000000001011011111", 2, 32)
+					assert.NoError(t, err)
+					inst, ok := isa.Decode(uint32(opcode)).(*isa.Jump)
+					assert.True(t, ok)
+					assert.Equal(t, isa.JumpEZ, inst.ConditionCode)
+					assert.Equal(t, isa.JumpForward, inst.Direction)
+					assert.Equal(t, uint32(22), inst.Offset)
+					assert.Equal(t, flamego.R31, inst.ConditionRegister)
+				})
+				t.Run("NZ", func(t *testing.T) {
+					opcode, err := strconv.ParseUint("01010000000000000000001011011111", 2, 32)
+					assert.NoError(t, err)
+					inst, ok := isa.Decode(uint32(opcode)).(*isa.Jump)
+					assert.True(t, ok)
+					assert.Equal(t, isa.JumpNZ, inst.ConditionCode)
+					assert.Equal(t, isa.JumpForward, inst.Direction)
+					assert.Equal(t, uint32(22), inst.Offset)
+					assert.Equal(t, flamego.R31, inst.ConditionRegister)
+				})
+				t.Run("LE", func(t *testing.T) {
+					opcode, err := strconv.ParseUint("01100000000000000000001011011111", 2, 32)
+					assert.NoError(t, err)
+					inst, ok := isa.Decode(uint32(opcode)).(*isa.Jump)
+					assert.True(t, ok)
+					assert.Equal(t, isa.JumpLE, inst.ConditionCode)
+					assert.Equal(t, isa.JumpForward, inst.Direction)
+					assert.Equal(t, uint32(22), inst.Offset)
+					assert.Equal(t, flamego.R31, inst.ConditionRegister)
+				})
+				t.Run("LZ", func(t *testing.T) {
+					opcode, err := strconv.ParseUint("01110000000000000000001011011111", 2, 32)
+					assert.NoError(t, err)
+					inst, ok := isa.Decode(uint32(opcode)).(*isa.Jump)
+					assert.True(t, ok)
+					assert.Equal(t, isa.JumpLZ, inst.ConditionCode)
+					assert.Equal(t, isa.JumpForward, inst.Direction)
+					assert.Equal(t, uint32(22), inst.Offset)
+					assert.Equal(t, flamego.R31, inst.ConditionRegister)
+				})
+			})
+			t.Run("Backward", func(t *testing.T) {
+				t.Run("EZ", func(t *testing.T) {
+					opcode, err := strconv.ParseUint("01001000000000000000001011011111", 2, 32)
+					assert.NoError(t, err)
+					inst, ok := isa.Decode(uint32(opcode)).(*isa.Jump)
+					assert.True(t, ok)
+					assert.Equal(t, isa.JumpEZ, inst.ConditionCode)
+					assert.Equal(t, isa.JumpBackward, inst.Direction)
+					assert.Equal(t, uint32(22), inst.Offset)
+					assert.Equal(t, flamego.R31, inst.ConditionRegister)
+				})
+				t.Run("NZ", func(t *testing.T) {
+					opcode, err := strconv.ParseUint("01011000000000000000001011011111", 2, 32)
+					assert.NoError(t, err)
+					inst, ok := isa.Decode(uint32(opcode)).(*isa.Jump)
+					assert.True(t, ok)
+					assert.Equal(t, isa.JumpNZ, inst.ConditionCode)
+					assert.Equal(t, isa.JumpBackward, inst.Direction)
+					assert.Equal(t, uint32(22), inst.Offset)
+					assert.Equal(t, flamego.R31, inst.ConditionRegister)
+				})
+				t.Run("LE", func(t *testing.T) {
+					opcode, err := strconv.ParseUint("01101000000000000000001011011111", 2, 32)
+					assert.NoError(t, err)
+					inst, ok := isa.Decode(uint32(opcode)).(*isa.Jump)
+					assert.True(t, ok)
+					assert.Equal(t, isa.JumpLE, inst.ConditionCode)
+					assert.Equal(t, isa.JumpBackward, inst.Direction)
+					assert.Equal(t, uint32(22), inst.Offset)
+					assert.Equal(t, flamego.R31, inst.ConditionRegister)
+				})
+				t.Run("LZ", func(t *testing.T) {
+					opcode, err := strconv.ParseUint("01111000000000000000001011011111", 2, 32)
+					assert.NoError(t, err)
+					inst, ok := isa.Decode(uint32(opcode)).(*isa.Jump)
+					assert.True(t, ok)
+					assert.Equal(t, isa.JumpLZ, inst.ConditionCode)
+					assert.Equal(t, isa.JumpBackward, inst.Direction)
+					assert.Equal(t, uint32(22), inst.Offset)
+					assert.Equal(t, flamego.R31, inst.ConditionRegister)
+				})
+			})
 		})
 	})
 }

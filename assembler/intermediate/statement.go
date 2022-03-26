@@ -9,8 +9,8 @@ func (s *Statement) AbsoluteAddress() uint32 {
 	return s.address
 }
 
-func (s *Statement) RelativeAddress(a uint32) uint32 {
-	return s.address - a
+func (s *Statement) RelativeAddress(a uint32) int32 {
+	return int32(s.address) - int32(a)
 }
 
 func (s *Statement) SetAddress(a uint32) {
