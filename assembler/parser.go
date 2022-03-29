@@ -258,61 +258,117 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		o, err := p.matchNumber()
-		if err != nil {
-			return nil, err
+		c := p.lexer.Current()
+		switch c.Category {
+		case CategoryLabel:
+			p.lexer.Move()
+			r, err := p.matchRegister()
+			if err != nil {
+				return nil, err
+			}
+			return intermediate.NewLoadWithLabel(a, c.Value, r, p.matchOptionalComment()), nil
+		case CategoryUpperName:
+			p.lexer.Move()
+			r, err := p.matchRegister()
+			if err != nil {
+				return nil, err
+			}
+			return intermediate.NewLoadWithConstant(a, c.Value, r, p.matchOptionalComment()), nil
+		default:
+			o, err := p.matchNumber()
+			if err != nil {
+				return nil, err
+			}
+			if o < 0 {
+				return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Load Offset: %d", o)}
+			}
+			d, err := p.matchRegister()
+			if err != nil {
+				return nil, err
+			}
+			return intermediate.NewLoadWithOffset(a, uint32(o), d, p.matchOptionalComment()), nil
 		}
-		if o < 0 {
-			return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Load Offset: %d", o)}
-		}
-		d, err := p.matchRegister()
-		if err != nil {
-			return nil, err
-		}
-		return intermediate.NewLoad(a, uint32(o), d, p.matchOptionalComment()), nil
 	case "store":
 		a, err := p.matchRegister()
 		if err != nil {
 			return nil, err
 		}
-		o, err := p.matchNumber()
-		if err != nil {
-			return nil, err
+		c := p.lexer.Current()
+		switch c.Category {
+		case CategoryLabel:
+			p.lexer.Move()
+			r, err := p.matchRegister()
+			if err != nil {
+				return nil, err
+			}
+			return intermediate.NewStoreWithLabel(a, c.Value, r, p.matchOptionalComment()), nil
+		case CategoryUpperName:
+			p.lexer.Move()
+			r, err := p.matchRegister()
+			if err != nil {
+				return nil, err
+			}
+			return intermediate.NewStoreWithConstant(a, c.Value, r, p.matchOptionalComment()), nil
+		default:
+			o, err := p.matchNumber()
+			if err != nil {
+				return nil, err
+			}
+			if o < 0 {
+				return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Store Offset: %d", o)}
+			}
+			s, err := p.matchRegister()
+			if err != nil {
+				return nil, err
+			}
+			return intermediate.NewStoreWithOffset(a, uint32(o), s, p.matchOptionalComment()), nil
 		}
-		if o < 0 {
-			return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Store Offset: %d", o)}
-		}
-		s, err := p.matchRegister()
-		if err != nil {
-			return nil, err
-		}
-		return intermediate.NewStore(a, uint32(o), s, p.matchOptionalComment()), nil
 	case "clear":
 		a, err := p.matchRegister()
 		if err != nil {
 			return nil, err
 		}
-		o, err := p.matchNumber()
-		if err != nil {
-			return nil, err
+		c := p.lexer.Current()
+		switch c.Category {
+		case CategoryLabel:
+			p.lexer.Move()
+			return intermediate.NewClearWithLabel(a, c.Value, p.matchOptionalComment()), nil
+		case CategoryUpperName:
+			p.lexer.Move()
+			return intermediate.NewClearWithConstant(a, c.Value, p.matchOptionalComment()), nil
+		default:
+			o, err := p.matchNumber()
+			if err != nil {
+				return nil, err
+			}
+			if o < 0 {
+				return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Clear Offset: %d", o)}
+			}
+			return intermediate.NewClearWithOffset(a, uint32(o), p.matchOptionalComment()), nil
 		}
-		if o < 0 {
-			return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Clear Offset: %d", o)}
-		}
-		return intermediate.NewClear(a, uint32(o), p.matchOptionalComment()), nil
 	case "flush":
 		a, err := p.matchRegister()
 		if err != nil {
 			return nil, err
 		}
-		o, err := p.matchNumber()
-		if err != nil {
-			return nil, err
+		c := p.lexer.Current()
+		switch c.Category {
+		case CategoryLabel:
+			p.lexer.Move()
+			return intermediate.NewFlushWithLabel(a, c.Value, p.matchOptionalComment()), nil
+		case CategoryUpperName:
+			p.lexer.Move()
+			return intermediate.NewFlushWithConstant(a, c.Value, p.matchOptionalComment()), nil
+		default:
+			o, err := p.matchNumber()
+			if err != nil {
+				return nil, err
+			}
+			if o < 0 {
+				return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Flush Offset: %d", o)}
+			}
+			return intermediate.NewFlushWithOffset(a, uint32(o), p.matchOptionalComment()), nil
 		}
-		if o < 0 {
-			return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Flush Offset: %d", o)}
-		}
-		return intermediate.NewFlush(a, uint32(o), p.matchOptionalComment()), nil
 	case "push":
 		// TODO support register lists
 		a, err := p.matchRegister()

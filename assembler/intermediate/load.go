@@ -8,15 +8,42 @@ import (
 
 var _ Addressable = (*Load)(nil)
 var _ Emittable = (*Load)(nil)
+var _ Linkable = (*Load)(nil)
 
 type Load struct {
 	Statement
-	address     flamego.Register
-	offset      uint32
-	destination flamego.Register
+	address      flamego.Register
+	labelName    string
+	constantName string
+	offset       uint32
+	destination  flamego.Register
+	label        *Label
+	constant     *Data
 }
 
-func NewLoad(a flamego.Register, o uint32, d flamego.Register, c string) *Load {
+func NewLoadWithLabel(a flamego.Register, l string, d flamego.Register, c string) *Load {
+	return &Load{
+		Statement: Statement{
+			comment: c,
+		},
+		address:     a,
+		labelName:   l,
+		destination: d,
+	}
+}
+
+func NewLoadWithConstant(a flamego.Register, n string, d flamego.Register, c string) *Load {
+	return &Load{
+		Statement: Statement{
+			comment: c,
+		},
+		address:      a,
+		constantName: n,
+		destination:  d,
+	}
+}
+
+func NewLoadWithOffset(a flamego.Register, o uint32, d flamego.Register, c string) *Load {
 	return &Load{
 		Statement: Statement{
 			comment: c,
@@ -25,6 +52,23 @@ func NewLoad(a flamego.Register, o uint32, d flamego.Register, c string) *Load {
 		offset:      o,
 		destination: d,
 	}
+}
+
+func (a *Load) Link(l Linker) error {
+	if a.labelName != "" {
+		label, err := l.Label(a.labelName)
+		if err != nil {
+			return err
+		}
+		a.label = label
+	} else if a.constantName != "" {
+		constant, err := l.Constant(a.constantName)
+		if err != nil {
+			return err
+		}
+		a.constant = constant
+	}
+	return nil
 }
 
 func (a *Load) String() string {
@@ -42,5 +86,10 @@ func (a *Load) EmittedSize() uint32 {
 }
 
 func (a *Load) Instruction() flamego.Instruction {
+	if a.label != nil {
+		a.offset = uint32(a.label.AbsoluteAddress())
+	} else if a.constant != nil {
+		a.offset = uint32(a.constant.Value())
+	}
 	return isa.NewLoad(a.address, a.offset, a.destination)
 }
