@@ -2,7 +2,35 @@ package vm
 
 import (
 	"aletheiaware.com/flamego"
+	"fmt"
 )
+
+type CacheOperation uint8
+
+const (
+	CacheNone CacheOperation = iota
+	CacheRead
+	CacheWrite
+	CacheClear
+	CacheFlush
+)
+
+func (o CacheOperation) String() string {
+	switch o {
+	case CacheNone:
+		return "-"
+	case CacheRead:
+		return "Read"
+	case CacheWrite:
+		return "Write"
+	case CacheClear:
+		return "Clear"
+	case CacheFlush:
+		return "Flush"
+	default:
+		return fmt.Sprintf("Unrecognized Cache Operation: %T", o)
+	}
+}
 
 const (
 	// Unit: Bytes
@@ -62,15 +90,18 @@ type Cache struct {
 	isSuccessful      bool
 	isBusy            bool
 	isFree            bool
-	isRead            bool
-	lowerReadPending  bool
-	lowerWritePending bool
+	operation         CacheOperation
 	lowerAddress      uint64
+	lowerOperation    CacheOperation
 	recentlyUsedCount int
 }
 
 func (c *Cache) Size() int {
 	return c.size
+}
+
+func (c *Cache) LineWidth() int {
+	return c.lineWidth
 }
 
 func (c *Cache) Lines() []*CacheLine {
@@ -79,6 +110,18 @@ func (c *Cache) Lines() []*CacheLine {
 
 func (c *Cache) Bus() flamego.Bus {
 	return c.bus
+}
+
+func (c *Cache) TagBits() int {
+	return c.tagBits
+}
+
+func (c *Cache) IndexBits() int {
+	return c.indexBits
+}
+
+func (c *Cache) OffsetBits() int {
+	return c.offsetBits
 }
 
 func (c *Cache) IsBusy() bool {
@@ -97,10 +140,34 @@ func (c *Cache) IsSuccessful() bool {
 	return c.isSuccessful
 }
 
+func (c *Cache) Address() uint64 {
+	return c.address
+}
+
+func (c *Cache) Operation() CacheOperation {
+	return c.operation
+}
+
+func (c *Cache) LowerAddress() uint64 {
+	return c.lowerAddress
+}
+
+func (c *Cache) LowerOperation() CacheOperation {
+	return c.lowerOperation
+}
+
+func (c *Cache) RecentlyUsedCount() int {
+	return c.recentlyUsedCount
+}
+
 func (c *Cache) Clock(cycle int) {
-	if !c.lower.IsBusy() {
-		if c.lowerReadPending {
-			c.lowerReadPending = false
+	if c.lower.IsBusy() {
+		// Do nothing
+	} else {
+		switch c.lowerOperation {
+		case CacheNone:
+			// Do nothing
+		case CacheRead:
 			if c.lower.IsSuccessful() {
 				tag, index, offset := c.parseAddress(c.lowerAddress)
 				if offset != 0 {
@@ -120,12 +187,35 @@ func (c *Cache) Clock(cycle int) {
 					line.SetDirty(i, false)
 				}
 				line.tag = tag
+			} else {
+				// If lower was unsuccessful it will get retried
 			}
-			c.Free()
-		} else if c.lowerWritePending {
-			c.lowerWritePending = false
-			c.Free()
+			c.lower.Free()
+		case CacheWrite:
+			if c.lower.IsSuccessful() {
+				tag, index, offset := c.parseAddress(c.lowerAddress)
+				if offset != 0 {
+					panic("Unaligned Cache Update")
+				}
+				line := c.lines[index]
+				if line.tag != tag {
+					panic("Lower write doesn't match cache line tag")
+				}
+				lb := c.lower.Bus()
+				for i := 0; i < c.lineWidth; i++ {
+					if line.IsValid(i) && lb.IsValid(i) && line.Read(i) == lb.Read(i) {
+						line.SetDirty(i, false)
+					}
+				}
+			} else {
+				// TODO what if lower write was unsuccessful?
+				panic("Not Yet Implemented")
+			}
+			c.lower.Free()
+		default:
+			panic(fmt.Errorf("Unrecognized Lower Cache Operation: %T", c.lowerOperation))
 		}
+		c.lowerOperation = CacheNone
 	}
 
 	if c.isBusy {
@@ -135,31 +225,86 @@ func (c *Cache) Clock(cycle int) {
 		c.isSuccessful = false
 		if line.tag == tag {
 			c.isSuccessful = true
-			c.setRecentlyUsed(index)
 		}
 
-		if c.isRead {
+		switch c.operation {
+		case CacheNone:
+			// Do nothing
+		case CacheRead:
 			// Check all values are valid
+			// Align offset to bus width
+			start := int(offset & (^uint64(c.busWidth - 1)))
 			for i := 0; i < c.busWidth; i++ {
-				if !line.IsValid(i + int(offset)) {
+				if !line.IsValid(i + start) {
 					c.isSuccessful = false
 				}
 			}
 			if c.isSuccessful {
 				// Copy values into bus
 				for i := 0; i < c.busWidth; i++ {
-					c.bus.Write(i, line.Read(i+int(offset)))
+					var d byte
+					if a := i + int(offset); a < line.Size() {
+						d = line.Read(a)
+					}
+					c.bus.Write(i, d)
 					c.bus.SetDirty(i, false)
 				}
+				c.setRecentlyUsed(index)
 			} else {
 				// Issue read request to lower store
+				// Clearing all offset bits read whole aligned line
 				c.lowerRead((c.address >> c.offsetBits) << c.offsetBits)
 			}
-		} else {
-			// TODO
-			panic("Not Yet Implemented")
+		case CacheWrite:
+			if c.isSuccessful {
+				for i := 0; i < c.busWidth; i++ {
+					if !c.bus.IsDirty(i) {
+						continue
+					}
+					v := c.bus.Read(i)
+					a := i + int(offset)
+					o := line.Read(a)
+					line.Write(a, v)
+					line.SetDirty(a, o != v) // Dirty if changed
+				}
+				c.setRecentlyUsed(index)
+			} else {
+				panic("Not Yet Implemented")
+				// TODO pick a line to evict
+				//  - if any values are dirty, write them to lower store
+				//  - if no values are dirty, reassign line to this tag
+			}
+		case CacheClear:
+			if c.isSuccessful {
+				for i := 0; i < 8; i++ {
+					line.SetValid(int(offset)+i, false)
+				}
+				c.setRecentlyUsed(index)
+			}
+			c.isSuccessful = true
+		case CacheFlush:
+			if c.isSuccessful {
+				// Only flush if any of the data is dirty
+				c.isSuccessful = false
+				for i := 0; i < 8; i++ {
+					if line.IsDirty(int(offset) + i) {
+						c.isSuccessful = true
+					}
+				}
+			}
+			if c.isSuccessful {
+				// Issue write request to lower store
+				// Clearing all offset bits to flush whole aligned line
+				c.isSuccessful = c.lowerWrite((c.address>>c.offsetBits)<<c.offsetBits, line)
+				c.setRecentlyUsed(index)
+			} else {
+				c.isSuccessful = true
+			}
+		default:
+			panic(fmt.Errorf("Unrecognized Cache Operation: %T", c.operation))
 		}
 		c.isBusy = false
+		c.operation = CacheNone
 	}
 }
 
@@ -173,7 +318,7 @@ func (c *Cache) Read(address uint64) {
 	c.isSuccessful = false
 	c.isBusy = true
 	c.isFree = false
-	c.isRead = true
+	c.operation = CacheRead
 	c.address = address
 }
 
@@ -187,19 +332,36 @@ func (c *Cache) Write(address uint64) {
 	c.isSuccessful = false
 	c.isBusy = true
 	c.isFree = false
-	c.isRead = false
+	c.operation = CacheWrite
 	c.address = address
 }
 
 func (c *Cache) Clear(address uint64) {
-	// TODO
-	panic("Not Yet Implemented")
+	if address < 0 {
+		panic("Cache access error")
+	}
+	if c.isBusy {
+		panic("Cache already busy")
+	}
+	c.isSuccessful = false
+	c.isBusy = true
+	c.isFree = false
+	c.operation = CacheClear
+	c.address = address
 }
 
-func (c *Cache) Flush(address uint64) bool {
-	// TODO
-	panic("Not Yet Implemented")
-	return true
+func (c *Cache) Flush(address uint64) {
+	if address < 0 {
+		panic("Cache access error")
+	}
+	if c.isBusy {
+		panic("Cache already busy")
+	}
+	c.isSuccessful = false
+	c.isBusy = true
+	c.isFree = false
+	c.operation = CacheFlush
+	c.address = address
 }
 
 func (c *Cache) setRecentlyUsed(index uint64) {
@@ -216,20 +378,29 @@ func (c *Cache) setRecentlyUsed(index uint64) {
 
 func (c *Cache) lowerRead(address uint64) {
 	if !c.lower.IsBusy() && c.lower.IsFree() {
-		c.lowerReadPending = true
 		c.lowerAddress = address
+		c.lowerOperation = CacheRead
 		c.lower.Read(address)
 	}
 }
 
-func (c *Cache) lowerWrite(address uint64) {
+func (c *Cache) lowerWrite(address uint64, line *CacheLine) bool {
 	if !c.lower.IsBusy() && c.lower.IsFree() {
-		c.lowerWritePending = true
 		c.lowerAddress = address
-		// TODO Copy values into lower bus
-		panic("Not Yet Implemented")
+		c.lowerOperation = CacheWrite
+		// Copy values into bus
+		b := c.lower.Bus()
+		for i := 0; i < b.Size(); i++ {
+			if line.IsDirty(i) {
+				b.Write(i, line.Read(i))
+				b.SetDirty(i, true)
+				line.SetDirty(i, false)
+			}
+		}
 		c.lower.Write(address)
+		return true
 	}
+	return false
 }
 
 func (c *Cache) parseAddress(a uint64) (uint64, uint64, uint64) {

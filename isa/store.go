@@ -4,6 +4,7 @@ import (
 	"aletheiaware.com/flamego"
 	"encoding/binary"
 	"fmt"
+	"log"
 )
 
 type Store struct {
@@ -11,6 +12,7 @@ type Store struct {
 	Offset          uint32
 	SourceRegister  flamego.Register
 	success         bool
+	issued          bool
 }
 
 func NewStore(a flamego.Register, o uint32, r flamego.Register) *Store {
@@ -33,27 +35,43 @@ func (i *Store) Load(x flamego.Context) (uint64, uint64, uint64) {
 }
 
 func (i *Store) Execute(x flamego.Context, a, b, c uint64) uint64 {
-	d := x.Core().DataCache()
-	if d.IsBusy() {
-		i.success = false // Cache Unavailable
-		return 0
+	if !i.issued {
+		l1d := x.Core().DataCache()
+		if l1d.IsBusy() || !l1d.IsFree() {
+			log.Println("Execute: L1D Cache Unavailable")
+			i.success = false // Cache Unavailable
+			return 0
+		}
+		// Copy Data to Bus
+		buffer := make([]byte, 8)
+		binary.BigEndian.PutUint64(buffer, c)
+		for i := 0; i < 8; i++ {
+			l1d.Bus().Write(i, buffer[i])
+		}
+		// Issue Write Request
+		l1d.Write(a + b)
+		i.issued = true
+		log.Println("Execute: L1D Store Issued")
 	}
-	// Copy Data to Bus
-	buffer := make([]byte, 8)
-	binary.BigEndian.PutUint64(buffer, c)
-	for i := 0; i < 8; i++ {
-		d.Bus().Write(i, buffer[i])
-	}
-	// Issue Write Request
-	d.Write(a + b)
 	return 0
 }
 
 func (i *Store) Format(x flamego.Context, a uint64) uint64 {
-	d := x.Core().DataCache()
-	if d.IsBusy() || !d.IsSuccessful() {
-		i.success = false // Cache Miss
+	if !i.success {
 		return 0
+	}
+	l1d := x.Core().DataCache()
+	if l1d.IsBusy() {
+		log.Println("Format: L1D Cache Busy")
+		i.success = false
+	} else if !l1d.IsSuccessful() {
+		log.Println("Format: L1D Cache Miss")
+		i.success = false
+		i.issued = false // Reissue Request
+		l1d.Free()       // Free Cache
+	} else {
+		l1d.Free() // Free Cache
+		log.Println("Format: L1D Store Successful")
 	}
 	return 0
 }
@@ -62,12 +80,12 @@ func (i *Store) Store(x flamego.Context, a uint64) {
 	// Do Nothing
 }
 
-func (i *Store) Retire(x flamego.Context) {
-	if !i.success {
-		return
+func (i *Store) Retire(x flamego.Context) bool {
+	if i.success {
+		x.IncrementProgramCounter()
+		return true
 	}
-	// Only proceed if successfull
-	x.IncrementProgramCounter()
+	return false
 }
 
 func (i *Store) String() string {
