@@ -144,7 +144,11 @@ func (x *Context) FetchInstruction() {
 }
 
 func (x *Context) LoadInstruction() {
-	if !x.isValid || x.isAsleep {
+	if !x.isValid {
+		return
+	}
+	if x.isAsleep {
+		x.sleepCycles++
 		return
 	}
 	if !x.isInterrupted && x.nextInterrupt != -1 {
@@ -175,7 +179,11 @@ func (x *Context) LoadInstruction() {
 }
 
 func (x *Context) DecodeInstruction() {
-	if !x.isValid || x.isAsleep {
+	if !x.isValid {
+		return
+	}
+	if x.isAsleep {
+		x.sleepCycles++
 		return
 	}
 	x.instruction = isa.Decode(x.opcode)
@@ -183,7 +191,11 @@ func (x *Context) DecodeInstruction() {
 }
 
 func (x *Context) LoadData() (a, b, c uint64) {
-	if !x.isValid || x.isAsleep {
+	if !x.isValid {
+		return
+	}
+	if x.isAsleep {
+		x.sleepCycles++
 		return
 	}
 	a, b, c = x.instruction.Load(x)
@@ -192,7 +204,11 @@ func (x *Context) LoadData() (a, b, c uint64) {
 }
 
 func (x *Context) ExecuteOperation(a, b, c uint64) (r uint64) {
-	if !x.isValid || x.isAsleep {
+	if !x.isValid {
+		return
+	}
+	if x.isAsleep {
+		x.sleepCycles++
 		return
 	}
 	r = x.instruction.Execute(x, a, b, c)
@@ -201,7 +217,11 @@ func (x *Context) ExecuteOperation(a, b, c uint64) (r uint64) {
 }
 
 func (x *Context) FormatData(a uint64) (r uint64) {
-	if !x.isValid || x.isAsleep {
+	if !x.isValid {
+		return
+	}
+	if x.isAsleep {
+		x.sleepCycles++
 		return
 	}
 	r = x.instruction.Format(x, a)
@@ -210,7 +230,11 @@ func (x *Context) FormatData(a uint64) (r uint64) {
 }
 
 func (x *Context) StoreData(a uint64) {
-	if !x.isValid || x.isAsleep {
+	if !x.isValid {
+		return
+	}
+	if x.isAsleep {
+		x.sleepCycles++
 		return
 	}
 	x.instruction.Store(x, a)
@@ -218,7 +242,11 @@ func (x *Context) StoreData(a uint64) {
 }
 
 func (x *Context) RetireInstruction() {
-	if !x.isValid || x.isAsleep {
+	if !x.isValid {
+		return
+	}
+	if x.isAsleep {
+		x.sleepCycles++
 		return
 	}
 	x.instruction.Retire(x)
