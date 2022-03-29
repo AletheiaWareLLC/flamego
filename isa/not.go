@@ -36,8 +36,9 @@ func (i *Not) Store(x flamego.Context, a uint64) {
 	x.WriteRegister(i.DestinationRegister, a)
 }
 
-func (i *Not) Retire(x flamego.Context) {
+func (i *Not) Retire(x flamego.Context) bool {
 	x.IncrementProgramCounter()
+	return true
 }
 
 func (i *Not) String() string {

@@ -100,8 +100,9 @@ func (i *Jump) Store(x flamego.Context, a uint64) {
 	x.SetProgramCounter(a)
 }
 
-func (i *Jump) Retire(x flamego.Context) {
+func (i *Jump) Retire(x flamego.Context) bool {
 	// Do Nothing
+	return true
 }
 
 func (i *Jump) String() string {

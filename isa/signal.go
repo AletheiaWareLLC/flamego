@@ -34,8 +34,9 @@ func (i *Signal) Store(x flamego.Context, a uint64) {
 	// Do Nothing
 }
 
-func (i *Signal) Retire(x flamego.Context) {
-	// Do Nothing
+func (i *Signal) Retire(x flamego.Context) bool {
+	x.IncrementProgramCounter()
+	return true
 }
 
 func (i *Signal) String() string {

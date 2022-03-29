@@ -35,8 +35,9 @@ func (i *Uninterrupt) Store(x flamego.Context, a uint64) {
 	x.SetProgramCounter(a)
 }
 
-func (i *Uninterrupt) Retire(x flamego.Context) {
+func (i *Uninterrupt) Retire(x flamego.Context) bool {
 	x.SetInterrupted(false)
+	return true
 }
 
 func (i *Uninterrupt) String() string {

@@ -28,6 +28,7 @@ type Context struct {
 	isInterrupted bool
 	nextInterrupt flamego.InterruptValue
 	isSignalled   bool
+	isRetrying    bool
 	requiresLock  bool
 	acquiredLock  bool
 
@@ -91,6 +92,10 @@ func (x *Context) IsSignalled() bool {
 	return x.isSignalled
 }
 
+func (x *Context) IsRetrying() bool {
+	return x.isRetrying
+}
+
 func (x *Context) Opcode() uint32 {
 	return x.opcode
 }
@@ -117,7 +122,9 @@ func (x *Context) SetAcquiredLock(acquired bool) {
 
 func (x *Context) FetchInstruction() {
 	x.isValid = true
-	if x.nextInterrupt >= 0 {
+	if x.isRetrying {
+		x.status = "retrying instruction"
+	} else if x.nextInterrupt >= 0 {
 		x.status = "interrupted"
 	} else if !x.isInterrupted && !x.acquiredLock && x.isSignalled {
 		x.status = "signalled"
@@ -145,6 +152,9 @@ func (x *Context) FetchInstruction() {
 
 func (x *Context) LoadInstruction() {
 	if !x.isValid {
+		return
+	}
+	if x.isRetrying {
 		return
 	}
 	if x.isAsleep {
@@ -180,6 +190,9 @@ func (x *Context) LoadInstruction() {
 
 func (x *Context) DecodeInstruction() {
 	if !x.isValid {
+		return
+	}
+	if x.isRetrying {
 		return
 	}
 	if x.isAsleep {
@@ -249,10 +262,15 @@ func (x *Context) RetireInstruction() {
 		x.sleepCycles++
 		return
 	}
-	x.instruction.Retire(x)
-	x.opcode = 0
-	x.instruction = nil
-	x.status = "retired instruction"
+	if x.instruction.Retire(x) {
+		x.opcode = 0
+		x.instruction = nil
+		x.status = "retired instruction"
+		x.isRetrying = false
+	} else {
+		x.status = "retrying instruction"
+		x.isRetrying = true
+	}
 }
 
 func (x *Context) ReadRegister(register flamego.Register) uint64 {

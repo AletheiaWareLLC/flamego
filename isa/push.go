@@ -49,10 +49,12 @@ func (i *Push) Store(x flamego.Context, a uint64) {
 	}
 }
 
-func (i *Push) Retire(x flamego.Context) {
+func (i *Push) Retire(x flamego.Context) bool {
 	if i.success {
 		x.IncrementProgramCounter()
+		return true
 	}
+	return false
 }
 
 func (i *Push) String() string {

@@ -30,10 +30,12 @@ func (i *Lock) Store(x flamego.Context, a uint64) {
 	// Do Nothing
 }
 
-func (i *Lock) Retire(x flamego.Context) {
+func (i *Lock) Retire(x flamego.Context) bool {
 	if x.AcquiredLock() {
 		x.IncrementProgramCounter()
+		return true
 	}
+	return false
 }
 
 func (i *Lock) String() string {

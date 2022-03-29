@@ -48,10 +48,12 @@ func (i *Pop) Store(x flamego.Context, a uint64) {
 	}
 }
 
-func (i *Pop) Retire(x flamego.Context) {
+func (i *Pop) Retire(x flamego.Context) bool {
 	if i.success {
 		x.IncrementProgramCounter()
+		return true
 	}
+	return false
 }
 
 func (i *Pop) String() string {

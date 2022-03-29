@@ -30,8 +30,9 @@ func (i *Halt) Store(x flamego.Context, a uint64) {
 	// Do Nothing
 }
 
-func (i *Halt) Retire(x flamego.Context) {
+func (i *Halt) Retire(x flamego.Context) bool {
 	// Do Nothing
+	return true
 }
 
 func (i *Halt) String() string {

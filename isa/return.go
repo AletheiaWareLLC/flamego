@@ -52,8 +52,9 @@ func (i *Return) Store(x flamego.Context, a uint64) {
 	}
 }
 
-func (i *Return) Retire(x flamego.Context) {
+func (i *Return) Retire(x flamego.Context) bool {
 	// Do Nothing
+	return true
 }
 
 func (i *Return) String() string {

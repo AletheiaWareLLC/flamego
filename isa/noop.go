@@ -30,8 +30,9 @@ func (i *Noop) Store(x flamego.Context, a uint64) {
 	// Do Nothing
 }
 
-func (i *Noop) Retire(x flamego.Context) {
+func (i *Noop) Retire(x flamego.Context) bool {
 	x.IncrementProgramCounter()
+	return true
 }
 
 func (i *Noop) String() string {

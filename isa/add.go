@@ -40,8 +40,9 @@ func (i *Add) Store(x flamego.Context, a uint64) {
 	x.WriteRegister(i.DestinationRegister, a)
 }
 
-func (i *Add) Retire(x flamego.Context) {
+func (i *Add) Retire(x flamego.Context) bool {
 	x.IncrementProgramCounter()
+	return true
 }
 
 func (i *Add) String() string {

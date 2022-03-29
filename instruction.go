@@ -12,5 +12,5 @@ type Instruction interface {
 	Execute(Context, uint64, uint64, uint64) uint64
 	Format(Context, uint64) uint64
 	Store(Context, uint64)
-	Retire(Context)
+	Retire(Context) bool
 }
