@@ -105,5 +105,5 @@ func (i *Jump) Retire(x flamego.Context) {
 }
 
 func (i *Jump) String() string {
-	return fmt.Sprintf("j%s %s0x%x %s", i.ConditionCode, i.Direction, i.Offset, i.ConditionRegister)
+	return fmt.Sprintf("j%s %s %s0x%x", i.ConditionCode, i.ConditionRegister, i.Direction, i.Offset)
 }
