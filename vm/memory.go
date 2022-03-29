@@ -2,7 +2,30 @@ package vm
 
 import (
 	"aletheiaware.com/flamego"
+	"fmt"
+	"io"
 )
+
+type MemoryOperation uint8
+
+const (
+	MemoryNone MemoryOperation = iota
+	MemoryRead
+	MemoryWrite
+)
+
+func (o MemoryOperation) String() string {
+	switch o {
+	case MemoryNone:
+		return "-"
+	case MemoryRead:
+		return "Read"
+	case MemoryWrite:
+		return "Write"
+	default:
+		return fmt.Sprintf("Unrecognized Memory Operation: %T", o)
+	}
+}
 
 func NewMemory(size int) *Memory {
 	return &Memory{
@@ -21,7 +44,7 @@ type Memory struct {
 	isSuccessful bool
 	isBusy       bool
 	isFree       bool
-	isRead       bool
+	operation    MemoryOperation
 }
 
 func (m *Memory) Size() int {
@@ -34,6 +57,10 @@ func (m *Memory) Bus() flamego.Bus {
 
 func (m *Memory) Data() []byte {
 	return m.data
+}
+
+func (m *Memory) Address() uint64 {
+	return m.address
 }
 
 func (m *Memory) IsBusy() bool {
@@ -52,8 +79,8 @@ func (m *Memory) IsSuccessful() bool {
 	return m.isSuccessful
 }
 
-func (m *Memory) IsRead() bool {
-	return m.isRead
+func (m *Memory) Operation() MemoryOperation {
+	return m.operation
 }
 
 func (m *Memory) Read(address uint64) {
@@ -66,7 +93,7 @@ func (m *Memory) Read(address uint64) {
 	m.isSuccessful = false
 	m.isBusy = true
 	m.isFree = false
-	m.isRead = true
+	m.operation = MemoryRead
 	m.address = address
 }
 
@@ -80,23 +107,39 @@ func (m *Memory) Write(address uint64) {
 	m.isSuccessful = false
 	m.isBusy = true
 	m.isFree = false
-	m.isRead = false
+	m.operation = MemoryWrite
 	m.address = address
 }
 
 func (m *Memory) Clock(cycle int) {
 	if m.isBusy {
 		for i := 0; i < m.bus.Size(); i++ {
-			if m.isRead {
+			switch m.operation {
+			case MemoryNone:
+				// Do nothing
+			case MemoryRead:
 				m.bus.Write(i, m.data[m.address+uint64(i)])
-			} else if m.bus.IsDirty(i) {
-				m.data[m.address+uint64(i)] = m.bus.Read(i)
+			case MemoryWrite:
+				if m.bus.IsDirty(i) {
+					m.data[m.address+uint64(i)] = m.bus.Read(i)
+				}
+			default:
+				panic(fmt.Errorf("Unrecognized Memory Operation: %T", m.operation))
 			}
 			m.bus.SetDirty(i, false)
 		}
 		m.isSuccessful = true
 		m.isBusy = false
+		m.operation = MemoryNone
 	}
+}
+
+func (m *Memory) Load(r io.Reader) (int, error) { //heysup? like ketchup, but made of hey
+	d, err := io.ReadAll(r)
+	if err != nil {
+		return 0, err
+	}
+	return copy(m.data, d), nil
 }
 
 func (m *Memory) Set(address uint64, data []byte) {
