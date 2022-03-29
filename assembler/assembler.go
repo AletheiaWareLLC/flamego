@@ -84,7 +84,9 @@ func (a *assembler) WriteTo(writer io.Writer) (int64, error) {
 	}
 	for _, s := range a.statements {
 		if l, ok := s.(intermediate.Linkable); ok {
-			l.Link(a)
+			if err := l.Link(a); err != nil {
+				return 0, err
+			}
 		}
 	}
 	var count int64
