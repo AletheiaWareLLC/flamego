@@ -164,42 +164,48 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 			return nil, err
 		}
 		return intermediate.NewUninterrupt(r, p.matchOptionalComment()), nil
-	case "jez":
+	case "jump":
 		l, err := p.matchLabel()
 		if err != nil {
 			return nil, err
 		}
+		return intermediate.NewJump(isa.JumpEZ, l, flamego.R0, p.matchOptionalComment()), nil
+	case "jez":
 		r, err := p.matchRegister()
+		if err != nil {
+			return nil, err
+		}
+		l, err := p.matchLabel()
 		if err != nil {
 			return nil, err
 		}
 		return intermediate.NewJump(isa.JumpEZ, l, r, p.matchOptionalComment()), nil
 	case "jnz":
-		l, err := p.matchLabel()
+		r, err := p.matchRegister()
 		if err != nil {
 			return nil, err
 		}
-		r, err := p.matchRegister()
+		l, err := p.matchLabel()
 		if err != nil {
 			return nil, err
 		}
 		return intermediate.NewJump(isa.JumpNZ, l, r, p.matchOptionalComment()), nil
 	case "jle":
-		l, err := p.matchLabel()
+		r, err := p.matchRegister()
 		if err != nil {
 			return nil, err
 		}
-		r, err := p.matchRegister()
+		l, err := p.matchLabel()
 		if err != nil {
 			return nil, err
 		}
 		return intermediate.NewJump(isa.JumpLE, l, r, p.matchOptionalComment()), nil
 	case "jlz":
-		l, err := p.matchLabel()
+		r, err := p.matchRegister()
 		if err != nil {
 			return nil, err
 		}
-		r, err := p.matchRegister()
+		l, err := p.matchLabel()
 		if err != nil {
 			return nil, err
 		}
