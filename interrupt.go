@@ -13,6 +13,7 @@ const (
 	InterruptArithmeticError
 	InterruptRegisterAccessError
 	InterruptMemoryAccessError
+	InterruptProgramAccessError
 	InterruptStackOverflowError
 	InterruptStackUnderflowError
 )

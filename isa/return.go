@@ -7,6 +7,7 @@ import (
 
 type Return struct {
 	AddressRegister flamego.Register
+	success         bool
 }
 
 func NewReturn(a flamego.Register) *Return {
@@ -16,6 +17,7 @@ func NewReturn(a flamego.Register) *Return {
 }
 
 func (i *Return) Load(x flamego.Context) (uint64, uint64, uint64) {
+	i.success = true
 	// Load Address Register
 	a := x.ReadRegister(i.AddressRegister)
 	// Load Program Start Register
@@ -27,7 +29,9 @@ func (i *Return) Load(x flamego.Context) (uint64, uint64, uint64) {
 
 func (i *Return) Execute(x flamego.Context, a, b, c uint64) uint64 {
 	if a > c {
-		// TODO x.Error
+		x.Error(flamego.InterruptProgramAccessError)
+		i.success = false
+		return 0
 	}
 	if !x.IsInterrupted() {
 		// Only add program start if not in an interrupt
@@ -42,8 +46,10 @@ func (i *Return) Format(x flamego.Context, a uint64) uint64 {
 }
 
 func (i *Return) Store(x flamego.Context, a uint64) {
-	// Update Program Counter
-	x.SetProgramCounter(a)
+	if i.success {
+		// Update Program Counter
+		x.SetProgramCounter(a)
+	}
 }
 
 func (i *Return) Retire(x flamego.Context) {
