@@ -533,6 +533,16 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 			return nil, err
 		}
 		return intermediate.NewModulo(s1, s2, d, p.matchOptionalComment()), nil
+	case "copy":
+		s, err := p.matchRegister()
+		if err != nil {
+			return nil, err
+		}
+		d, err := p.matchRegister()
+		if err != nil {
+			return nil, err
+		}
+		return intermediate.NewAdd(s, flamego.R0, d, p.matchOptionalComment()), nil
 	}
 	return nil, &Error{p.lexer.Line(), fmt.Sprintf("Unrecognized Instruction: %s", value)}
 }
