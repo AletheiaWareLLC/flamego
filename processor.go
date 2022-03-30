@@ -6,6 +6,7 @@ type Processor interface {
 	Cache() Cache
 	Core(int) Core
 	AddCore(Core)
+	Device(int) Device
 	AddDevice(Device)
 
 	Halt()

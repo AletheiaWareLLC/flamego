@@ -34,6 +34,10 @@ func (p *Processor) AddCore(c flamego.Core) {
 	p.cores = append(p.cores, c)
 }
 
+func (p *Processor) Device(index int) flamego.Device {
+	return p.devices[index]
+}
+
 func (p *Processor) AddDevice(d flamego.Device) {
 	p.devices = append(p.devices, d)
 }
