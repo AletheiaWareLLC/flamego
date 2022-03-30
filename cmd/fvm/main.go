@@ -2,26 +2,37 @@ package main
 
 import (
 	"aletheiaware.com/flamego/vm"
-	"io"
+	"flag"
 	"log"
 	"os"
 )
 
+var (
+	bootloader = flag.String("b", "", "The bootloader to load into memory")
+	storage    = flag.String("s", "", "The file to load into storage")
+)
+
 func main() {
+	flag.Parse()
+
 	machine := vm.NewMachine()
 
-	if len(os.Args) > 1 {
-		// Copy binary into memory
-		f, err := os.Open(os.Args[1])
+	if *bootloader != "" {
+		// Copy bootloader into memory
+		f, err := os.Open(*bootloader)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer f.Close()
-		d, err := io.ReadAll(f)
-		if err != nil {
+		machine.Memory.Load(f)
+	}
+
+	if *storage != "" {
+		s := vm.NewFileStorage(machine.Memory, 64, machine.Processor.Signal)
+		if err := s.Open(*storage); err != nil {
 			log.Fatal(err)
 		}
-		machine.Memory.Set(0, d)
+		machine.Processor.AddDevice(s)
 	}
 
 	// Signal the first context of the first core
