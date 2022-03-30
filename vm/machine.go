@@ -8,8 +8,6 @@ import (
 type Machine struct {
 	Processor *Processor
 	Memory    *Memory
-	//Storage *FileStorage
-	//Display *Display
 
 	Tick int
 }
@@ -37,17 +35,6 @@ func (m *Machine) Clock() {
 	if m.Processor.HasHalted() {
 		log.Println("Processor Halted")
 		return
-	}
-
-	// IO Devices are 1000 times slower
-	if m.Tick%1000 == 0 {
-		// m.Storage.Clock(m.Tick /1000)
-		// m.Display.Clock(m.Tick /1000)
-	}
-
-	// Main Memory is 100 times slower
-	if m.Tick%100 == 0 {
-		m.Memory.Clock(m.Tick / 100)
 	}
 
 	// Tick Processor
