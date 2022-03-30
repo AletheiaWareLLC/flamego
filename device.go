@@ -1,6 +1,7 @@
 package flamego
 
 type Device interface {
-	Store
+	Clockable
+
 	Signal()
 }

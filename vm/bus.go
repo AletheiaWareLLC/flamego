@@ -6,10 +6,9 @@ import (
 
 const (
 	// Unit: Bytes
-	BusSizeL1Cache  = 8
-	BusSizeL2Cache  = 64
-	BusSizeMemory   = 512
-	BusSizeIODevice = 8
+	BusSizeL1Cache = 8
+	BusSizeL2Cache = 64
+	BusSizeMemory  = 512
 )
 
 func NewBus(size int) *Bus {
