@@ -6,27 +6,6 @@ import (
 	"io"
 )
 
-type MemoryOperation uint8
-
-const (
-	MemoryNone MemoryOperation = iota
-	MemoryRead
-	MemoryWrite
-)
-
-func (o MemoryOperation) String() string {
-	switch o {
-	case MemoryNone:
-		return "-"
-	case MemoryRead:
-		return "Read"
-	case MemoryWrite:
-		return "Write"
-	default:
-		return fmt.Sprintf("Unrecognized Memory Operation: %T", o)
-	}
-}
-
 func NewMemory(size int) *Memory {
 	return &Memory{
 		size:   size,
@@ -44,7 +23,7 @@ type Memory struct {
 	isSuccessful bool
 	isBusy       bool
 	isFree       bool
-	operation    MemoryOperation
+	operation    flamego.MemoryOperation
 }
 
 func (m *Memory) Size() int {
@@ -79,7 +58,7 @@ func (m *Memory) IsSuccessful() bool {
 	return m.isSuccessful
 }
 
-func (m *Memory) Operation() MemoryOperation {
+func (m *Memory) Operation() flamego.MemoryOperation {
 	return m.operation
 }
 
@@ -93,7 +72,7 @@ func (m *Memory) Read(address uint64) {
 	m.isSuccessful = false
 	m.isBusy = true
 	m.isFree = false
-	m.operation = MemoryRead
+	m.operation = flamego.MemoryRead
 	m.address = address
 }
 
@@ -107,7 +86,7 @@ func (m *Memory) Write(address uint64) {
 	m.isSuccessful = false
 	m.isBusy = true
 	m.isFree = false
-	m.operation = MemoryWrite
+	m.operation = flamego.MemoryWrite
 	m.address = address
 }
 
@@ -115,22 +94,22 @@ func (m *Memory) Clock(cycle int) {
 	if m.isBusy {
 		for i := 0; i < m.bus.Size(); i++ {
 			switch m.operation {
-			case MemoryNone:
+			case flamego.MemoryNone:
 				// Do nothing
-			case MemoryRead:
+			case flamego.MemoryRead:
 				m.bus.Write(i, m.data[m.address+uint64(i)])
-			case MemoryWrite:
+			case flamego.MemoryWrite:
 				if m.bus.IsDirty(i) {
 					m.data[m.address+uint64(i)] = m.bus.Read(i)
 				}
 			default:
-				panic(fmt.Errorf("Unrecognized Memory Operation: %T", m.operation))
+				panic(fmt.Errorf("Unrecognized Memory Operation: %v", m.operation))
 			}
 			m.bus.SetDirty(i, false)
 		}
 		m.isSuccessful = true
 		m.isBusy = false
-		m.operation = MemoryNone
+		m.operation = flamego.MemoryNone
 	}
 }
 
