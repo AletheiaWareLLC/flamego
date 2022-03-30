@@ -35,8 +35,15 @@ func (p *parser) Parse() error {
 			if err != nil {
 				return err
 			}
+			comment := p.matchOptionalComment()
 			for i := int64(1); i <= count; i++ {
-				p.assembler.AddStatement(intermediate.NewDataWithValue(0, fmt.Sprintf("padding %d/%d", i, count)))
+				var c string
+				if comment == "" {
+					c = fmt.Sprintf("padding %d/%d", i, count)
+				} else {
+					c = fmt.Sprintf("padding %d/%d // %s", i, count, comment)
+				}
+				p.assembler.AddStatement(intermediate.NewDataWithValue(0, c))
 			}
 		} else if p.lexer.CurrentIs(CategoryUpperName) {
 			name := p.lexer.Current().Value
@@ -45,6 +52,7 @@ func (p *parser) Parse() error {
 			if err != nil {
 				return err
 			}
+			p.matchOptionalComment() // Ignored
 			p.assembler.AddConstant(name, d)
 		} else {
 			s, err := p.matchStatement()
