@@ -28,6 +28,10 @@ func (i *Divide) Load(x flamego.Context) (uint64, uint64, uint64) {
 }
 
 func (i *Divide) Execute(x flamego.Context, a, b, c uint64) uint64 {
+	if b == 0 {
+		x.Error(flamego.InterruptArithmeticError)
+		return 0
+	}
 	return a / b
 }
 

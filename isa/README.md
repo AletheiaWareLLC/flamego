@@ -133,6 +133,8 @@ Performs a division.
 register[destination] = register[source1] / register[source2]
 ```
 
+Triggers InterruptArithmeticError if contents of source2 is 0.
+
 ### Modulo
 
 Performs a modulo.
@@ -140,6 +142,8 @@ Performs a modulo.
 ```
 register[destination] = register[source1] % register[source2]
 ```
+
+Triggers InterruptArithmeticError if contents of source2 is 0.
 
 ## Control Flow
 
@@ -183,6 +187,9 @@ A: address register
 programcounter = register[address]
 ```
 
+If the context is currently interrupted, RProgramCounter will be set to the contents of address register.
+If the context is not current interrupted, RProgramCounter will be set to sum of the contents of address register and RProgramStart. An InterruptProgramAccessError will be triggered if this sum exceeds RProgramLimit.
+
 ### Return
 
 Assembly: return addressregister
@@ -193,6 +200,9 @@ A: address register
 ```
 programcounter = register[address]
 ```
+
+If the context is currently interrupted, RProgramCounter will be set to the contents of address register.
+If the context is not current interrupted, RProgramCounter will be set to sum of the contents of address register and RProgramStart. An InterruptProgramAccessError will be triggered if this sum exceeds RProgramLimit.
 
 ## Data Movement
 
@@ -226,6 +236,8 @@ D: destination register
 register[destination] = memory[register[address] + offset]
 ```
 
+Retryable if L1 Data Cache is unavailable or unsuccessful (cache miss).
+
 ### Store
 
 Assembly: store address offset source
@@ -242,6 +254,8 @@ S: source register
 memory[register[address] + offset] = register[source]
 ```
 
+Retryable if L1 Data Cache is unavailable or unsuccessful (cache miss).
+
 ### Clear
 
 Assembly: clear address offset
@@ -253,6 +267,8 @@ O: offset
  - 17bit
 
 Invalidates the data stored in the cache(s) at the address, forcing the next load to come from main memory.
+
+Retryable if L1 Instruction, L1 Data, or L2 Cache is unavailable or unsuccessful (cache miss).
 
 ### Flush
 
@@ -266,23 +282,33 @@ O: offset
 
 Writes the data stored in the cache(s) at the address to main memory.
 
+Retryable if L1 Data, or L2 Cache is unavailable or unsuccessful (cache miss).
+
 ### Push
 
-Assembly: push rX, rY, rZ...
+Assembly: push register
 Opcode: 0000010- -------- -------- ---RRRRR
 
 R: register
 
 Pushes the given register onto stack
 
+Retryable if L1 Data Cache is unavailable or unsuccessful (cache miss).
+
+Triggers InterruptStackOverflowError if RStackPointer > RStackLimit.
+
 ### Pop
 
-Assembly: pop rX, rY, rZ...
+Assembly: pop register
 Opcode: 0000011- -------- -------- ---RRRRR
 
 R: register
 
 Pops the given register from stack
+
+Retryable if L1 Data Cache is unavailable or unsuccessful (cache miss).
+
+Triggers InterruptStackUnderflowError if RStackPointer < RStackStart.
 
 ## Special
 
@@ -335,6 +361,8 @@ Acquires the hardware lock.
 
 Only callable during an interrupt.
 
+Retryable if lock is not acquired.
+
 ### Unlock
 
 Assembly: unlock
@@ -343,6 +371,8 @@ Opcode: 00000001 0101---- -------- --------
 Releases the hardware lock.
 
 Only callable during an interrupt.
+
+Retryable if lock is not released.
 
 ### Interrupt
 

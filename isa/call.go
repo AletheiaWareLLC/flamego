@@ -29,14 +29,14 @@ func (i *Call) Load(x flamego.Context) (uint64, uint64, uint64) {
 }
 
 func (i *Call) Execute(x flamego.Context, a, b, c uint64) uint64 {
-	if a > c {
-		x.Error(flamego.InterruptProgramAccessError)
-		i.success = false
-		return 0
-	}
 	if !x.IsInterrupted() {
 		// Only add program start if not in an interrupt
 		a += b
+		if a > c {
+			x.Error(flamego.InterruptProgramAccessError)
+			i.success = false
+			return 0
+		}
 	}
 	return a
 }
