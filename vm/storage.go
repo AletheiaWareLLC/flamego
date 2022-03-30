@@ -19,17 +19,17 @@ var operations = map[uint32]flamego.DeviceOperation{
 
 func NewFileStorage(m flamego.Memory, o uint64, s func(int)) *FileStorage {
 	return &FileStorage{
-		memory:   m,
-		offset:   o,
-		onSignal: s,
+		memory:       m,
+		memoryOffset: o,
+		onSignal:     s,
 	}
 }
 
 type FileStorage struct {
 	file            *os.File
 	memory          flamego.Memory
+	memoryOffset    uint64
 	memoryOperation flamego.MemoryOperation
-	offset          uint64
 	onSignal        func(int)
 	isBusy          bool
 	operation       flamego.DeviceOperation
@@ -38,6 +38,46 @@ type FileStorage struct {
 	parameter       uint64
 	deviceAddress   uint64
 	memoryAddress   uint64
+}
+
+func (s *FileStorage) File() *os.File {
+	return s.file
+}
+
+func (s *FileStorage) MemoryOffset() uint64 {
+	return s.memoryOffset
+}
+
+func (s *FileStorage) MemoryOperation() flamego.MemoryOperation {
+	return s.memoryOperation
+}
+
+func (s *FileStorage) IsBusy() bool {
+	return s.isBusy
+}
+
+func (s *FileStorage) Operation() flamego.DeviceOperation {
+	return s.operation
+}
+
+func (s *FileStorage) Command() uint64 {
+	return s.command
+}
+
+func (s *FileStorage) Controller() int {
+	return s.controller
+}
+
+func (s *FileStorage) Parameter() uint64 {
+	return s.parameter
+}
+
+func (s *FileStorage) DeviceAddress() uint64 {
+	return s.deviceAddress
+}
+
+func (s *FileStorage) MemoryAddress() uint64 {
+	return s.memoryAddress
 }
 
 func (s *FileStorage) Open(path string) error {
@@ -159,7 +199,7 @@ func (s *FileStorage) LoadControlBlock() {
 	// Read control block from memory
 	if !s.memory.IsBusy() && s.memory.IsFree() {
 		s.memoryOperation = flamego.MemoryRead
-		s.memory.Read(s.offset)
+		s.memory.Read(s.memoryOffset)
 	}
 }
 
