@@ -36,7 +36,7 @@ func (p *parser) Parse() error {
 				return err
 			}
 			comment := p.matchOptionalComment()
-			for i := int64(1); i <= count; i++ {
+			for i := uint64(1); i <= count; i++ {
 				var c string
 				if comment == "" {
 					c = fmt.Sprintf("padding %d/%d", i, count)
@@ -75,23 +75,22 @@ func (p *parser) matchData() (*intermediate.Data, error) {
 	if err != nil {
 		return nil, err
 	}
-	if value < 0 {
-		value = ^value + 1
-	}
-	return intermediate.NewDataWithValue(uint64(value), p.matchOptionalComment()), nil
+	return intermediate.NewDataWithValue(value, p.matchOptionalComment()), nil
 }
 
 func (p *parser) matchLabel() (string, error) {
 	return p.lexer.Match(CategoryLabel)
 }
 
-func (p *parser) matchNumber() (int64, error) {
+func (p *parser) matchNumber() (uint64, error) {
 	v, err := p.lexer.Match(CategoryNumber)
 	if err != nil {
 		return 0, err
 	}
-	// TODO if v starts with '0x' or '-0x', parse as hexadecimal
-	return strconv.ParseInt(v, 10, 64)
+	if strings.HasPrefix(v, "0x") {
+		return strconv.ParseUint(strings.TrimPrefix(v, "0x"), 16, 64)
+	}
+	return strconv.ParseUint(v, 10, 64)
 }
 
 func (p *parser) matchOptionalComment() string {
@@ -162,7 +161,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		if v < 0 || v >= flamego.InterruptCount {
+		if v >= flamego.InterruptCount {
 			return nil, &Error{p.lexer.Line(), fmt.Sprintf("Invalid Interrupt Value: '%d'", v)}
 		}
 		return intermediate.NewInterrupt(flamego.InterruptValue(v), p.matchOptionalComment()), nil
@@ -252,9 +251,6 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 			if err != nil {
 				return nil, err
 			}
-			if c < 0 {
-				return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative LoadC Constant: %d", c)}
-			}
 			r, err := p.matchRegister()
 			if err != nil {
 				return nil, err
@@ -286,9 +282,6 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 			o, err := p.matchNumber()
 			if err != nil {
 				return nil, err
-			}
-			if o < 0 {
-				return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Load Offset: %d", o)}
 			}
 			d, err := p.matchRegister()
 			if err != nil {
@@ -322,9 +315,6 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 			if err != nil {
 				return nil, err
 			}
-			if o < 0 {
-				return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Store Offset: %d", o)}
-			}
 			s, err := p.matchRegister()
 			if err != nil {
 				return nil, err
@@ -349,9 +339,6 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 			if err != nil {
 				return nil, err
 			}
-			if o < 0 {
-				return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Clear Offset: %d", o)}
-			}
 			return intermediate.NewClearWithOffset(a, uint32(o), p.matchOptionalComment()), nil
 		}
 	case "flush":
@@ -371,9 +358,6 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 			o, err := p.matchNumber()
 			if err != nil {
 				return nil, err
-			}
-			if o < 0 {
-				return nil, &Error{p.lexer.Line(), fmt.Sprintf("Negative Flush Offset: %d", o)}
 			}
 			return intermediate.NewFlushWithOffset(a, uint32(o), p.matchOptionalComment()), nil
 		}

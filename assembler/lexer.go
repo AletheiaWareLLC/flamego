@@ -26,7 +26,7 @@ func NewLexer() Lexer {
 			NewLexemLiteral(CategoryData, "data"),
 			NewLexemLiteral(CategoryComma, ","),
 			NewLexemRegexp(CategoryLabel, "^#[\\.:_a-zA-Z0-9\\(\\)]+$"),
-			NewLexemRegexp(CategoryNumber, "^0$|^[+-]?[1-9][0-9]*$"),
+			NewLexemRegexp(CategoryNumber, "^0$|^[+-]?[1-9][0-9]*$|^0x[0-9A-Fa-f]*$"),
 			NewLexemRegexp(CategoryUpperName, "^[A-Z][_a-zA-Z0-9]*$"),
 			NewLexemRegexp(CategoryLowerName, "^[_a-z][_a-zA-Z0-9]*$"),
 		},
