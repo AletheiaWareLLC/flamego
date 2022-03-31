@@ -74,9 +74,9 @@ func (i *Jump) Execute(x flamego.Context, a, b, c uint64) uint64 {
 	case JumpNZ:
 		jump = b != 0
 	case JumpLE:
-		jump = b <= 0
+		jump = int64(b) <= 0
 	case JumpLZ:
-		jump = b < 0
+		jump = int64(b) < 0
 	}
 	if jump {
 		offset := uint64(i.Offset)
