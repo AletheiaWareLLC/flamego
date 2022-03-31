@@ -99,7 +99,7 @@ func (m *Memory) Clock(cycle int) {
 			case flamego.MemoryRead:
 				m.bus.Write(i, m.data[m.address+uint64(i)])
 			case flamego.MemoryWrite:
-				if m.bus.IsDirty(i) {
+				if m.bus.IsValid(i) && m.bus.IsDirty(i) {
 					m.data[m.address+uint64(i)] = m.bus.Read(i)
 				}
 			default:

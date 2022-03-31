@@ -156,8 +156,10 @@ func (c *Cache) Clock(cycle int) {
 				lb := c.lower.Bus()
 				// Copy from lower bus into cache line
 				for i := 0; i < c.lineWidth; i++ {
-					line.Write(i, lb.Read(i))
-					line.SetDirty(i, false)
+					if lb.IsValid(i) {
+						line.Write(i, lb.Read(i))
+						line.SetDirty(i, false)
+					}
 				}
 				line.tag = tag
 			} else {
@@ -214,13 +216,12 @@ func (c *Cache) Clock(cycle int) {
 			}
 			if c.isSuccessful {
 				// Copy values into bus
-				for i := 0; i < c.busWidth; i++ {
-					var d byte
-					if a := i + int(offset); a < line.Size() {
-						d = line.Read(a)
+				a := int(offset)
+				for i := 0; i < c.busWidth && a < c.lineWidth; i, a = i+1, a+1 {
+					if line.IsValid(i) {
+						c.bus.Write(i, line.Read(a))
+						c.bus.SetDirty(i, false)
 					}
-					c.bus.Write(i, d)
-					c.bus.SetDirty(i, false)
 				}
 				c.setRecentlyUsed(index)
 			} else {
@@ -230,12 +231,13 @@ func (c *Cache) Clock(cycle int) {
 			}
 		case flamego.CacheWrite:
 			if c.isSuccessful {
-				for i := 0; i < c.busWidth; i++ {
+				a := int(offset)
+				for i := 0; i < c.busWidth && a < c.lineWidth; i, a = i+1, a+1 {
 					if !c.bus.IsDirty(i) {
 						continue
 					}
+					c.bus.SetDirty(i, false)
 					v := c.bus.Read(i)
-					a := i + int(offset)
 					o := line.Read(a)
 					line.Write(a, v)
 					line.SetDirty(a, o != v) // Dirty if changed
@@ -249,8 +251,9 @@ func (c *Cache) Clock(cycle int) {
 			}
 		case flamego.CacheClear:
 			if c.isSuccessful {
-				for i := 0; i < 8; i++ {
-					line.SetValid(int(offset)+i, false)
+				a := int(offset)
+				for i := 0; i < flamego.DataSize && a < c.lineWidth; i, a = i+1, a+1 {
+					line.SetValid(a, false)
 				}
 				c.setRecentlyUsed(index)
 			}
@@ -259,8 +262,9 @@ func (c *Cache) Clock(cycle int) {
 			if c.isSuccessful {
 				// Only flush if any of the data is dirty
 				c.isSuccessful = false
-				for i := 0; i < 8; i++ {
-					if line.IsDirty(int(offset) + i) {
+				a := int(offset)
+				for i := 0; i < flamego.DataSize && a < c.lineWidth; i, a = i+1, a+1 {
+					if line.IsValid(a) && line.IsDirty(a) {
 						c.isSuccessful = true
 					}
 				}
@@ -367,7 +371,8 @@ func (c *Cache) lowerWrite(address uint64, line *CacheLine) bool {
 			if line.IsDirty(i) {
 				b.Write(i, line.Read(i))
 				b.SetDirty(i, true)
-				line.SetDirty(i, false)
+			} else {
+				b.SetValid(i, false)
 			}
 		}
 		c.lower.Write(address)
