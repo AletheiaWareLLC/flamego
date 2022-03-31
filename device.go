@@ -32,13 +32,9 @@ func (o DeviceOperation) String() string {
 	}
 }
 
-const DeviceControlBlockSize = 32
-
 const (
-	DeviceCommandEnable uint32 = iota
-	DeviceCommandDisable
-	DeviceCommandRead
-	DeviceCommandWrite
+	DeviceControlBlockOffset = 64
+	DeviceControlBlockSize   = 32
 )
 
 const (
@@ -52,4 +48,6 @@ type Device interface {
 	Clockable
 
 	Signal()
+
+	SetOnSignal(func(int))
 }

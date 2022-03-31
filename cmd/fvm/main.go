@@ -1,6 +1,7 @@
 package main
 
 import (
+	"aletheiaware.com/flamego"
 	"aletheiaware.com/flamego/vm"
 	"flag"
 	"log"
@@ -28,7 +29,7 @@ func main() {
 	}
 
 	if *storage != "" {
-		s := vm.NewFileStorage(machine.Memory, 64, machine.Processor.Signal)
+		s := vm.NewFileStorage(machine.Memory, flamego.DeviceControlBlockOffset)
 		if err := s.Open(*storage); err != nil {
 			log.Fatal(err)
 		}

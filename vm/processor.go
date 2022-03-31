@@ -40,6 +40,7 @@ func (p *Processor) Device(index int) flamego.Device {
 
 func (p *Processor) AddDevice(d flamego.Device) {
 	p.devices = append(p.devices, d)
+	d.SetOnSignal(p.Signal)
 }
 
 func (p *Processor) Halt() {
