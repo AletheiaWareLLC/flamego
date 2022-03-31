@@ -6,6 +6,7 @@ type DeviceOperation uint32
 
 const (
 	DeviceNone DeviceOperation = iota
+	DeviceStatus
 	DeviceEnable
 	DeviceDisable
 	DeviceRead
@@ -16,6 +17,8 @@ func (o DeviceOperation) String() string {
 	switch o {
 	case DeviceNone:
 		return "-"
+	case DeviceStatus:
+		return "Status"
 	case DeviceEnable:
 		return "Enable"
 	case DeviceDisable:
