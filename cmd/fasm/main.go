@@ -7,7 +7,10 @@ import (
 	"os"
 )
 
-var output = flag.String("o", "", "Output file")
+var (
+	output  = flag.String("o", "", "Output file")
+	verbose = flag.Bool("v", false, "Log additional information")
+)
 
 func main() {
 	flag.Parse()
@@ -39,4 +42,13 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Println("Wrote", count, "bytes")
+
+	if *verbose {
+		for n, c := range a.Constants() {
+			log.Println(n, c)
+		}
+		for _, l := range a.Labels() {
+			log.Println(l, "address", l.AbsoluteAddress())
+		}
+	}
 }

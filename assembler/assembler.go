@@ -9,6 +9,7 @@ import (
 type Assembler interface {
 	io.ReaderFrom
 	io.WriterTo
+	intermediate.Linker
 	AddConstant(string, *intermediate.Data) error
 	AddLabel(string, *intermediate.Label) error
 	AddStatement(intermediate.Addressable) error
@@ -34,11 +35,19 @@ func (a *assembler) Constant(name string) (*intermediate.Data, error) {
 	return nil, fmt.Errorf("Constant '%s' Not Declared", name)
 }
 
+func (a *assembler) Constants() map[string]*intermediate.Data {
+	return a.constants
+}
+
 func (a *assembler) Label(name string) (*intermediate.Label, error) {
 	if l, ok := a.labels[name]; ok {
 		return l, nil
 	}
 	return nil, fmt.Errorf("Label '%s' Not Declared", name)
+}
+
+func (a *assembler) Labels() map[string]*intermediate.Label {
+	return a.labels
 }
 
 func (a *assembler) ReadFrom(reader io.Reader) (int64, error) {
