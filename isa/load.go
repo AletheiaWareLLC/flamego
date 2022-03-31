@@ -4,7 +4,6 @@ import (
 	"aletheiaware.com/flamego"
 	"encoding/binary"
 	"fmt"
-	"log"
 )
 
 type Load struct {
@@ -36,14 +35,12 @@ func (i *Load) Execute(x flamego.Context, a, b, c uint64) uint64 {
 	if !i.issued {
 		l1d := x.Core().DataCache()
 		if l1d.IsBusy() || !l1d.IsFree() {
-			log.Println("Execute: L1D Cache Unavailable")
 			i.success = false // Cache Unavailable
 			return 0
 		}
 		// Issue Read Request
 		l1d.Read(a + b)
 		i.issued = true
-		log.Println("Execute: L1D Load Issued")
 	}
 	return 0
 }
@@ -54,10 +51,8 @@ func (i *Load) Format(x flamego.Context, a uint64) uint64 {
 	}
 	l1d := x.Core().DataCache()
 	if l1d.IsBusy() {
-		log.Println("Format: L1D Cache Busy")
 		i.success = false
 	} else if !l1d.IsSuccessful() {
-		log.Println("Format: L1D Cache Miss")
 		i.success = false
 		i.issued = false // Reissue Request
 		l1d.Free()       // Free Cache
@@ -68,7 +63,6 @@ func (i *Load) Format(x flamego.Context, a uint64) uint64 {
 			buffer[i] = l1d.Bus().Read(i)
 		}
 		l1d.Free() // Free Cache
-		log.Println("Format: L1D Load Successful")
 		return binary.BigEndian.Uint64(buffer)
 	}
 	return 0

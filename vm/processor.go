@@ -78,13 +78,11 @@ func (p *Processor) Clock(cycle int) {
 
 	// Main Memory is 100 times slower
 	if cycle%100 == 0 {
-		log.Println("Memory Clock")
 		p.memory.Clock(cycle / 100)
 	}
 
 	// L2 Caches are 10 times slower
 	if cycle%10 == 0 {
-		log.Println("L2 Clock")
 		p.cache.Clock(cycle / 10)
 	}
 
