@@ -9,7 +9,7 @@ import (
 func NewMemory(size int) *Memory {
 	return &Memory{
 		size:   size,
-		bus:    NewBus(BusSizeMemory),
+		bus:    NewBus(flamego.BusSizeMemory),
 		data:   make([]byte, size),
 		isFree: true,
 	}

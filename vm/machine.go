@@ -13,12 +13,12 @@ type Machine struct {
 }
 
 func NewMachine() *Machine {
-	memory := NewMemory(flamego.MemorySizeBytes)
-	l2Cache := NewL2Cache(flamego.L2CacheSizeBytes, memory)
+	memory := NewMemory(flamego.SizeMemory)
+	l2Cache := NewL2Cache(flamego.SizeL2Cache, memory)
 	processor := NewProcessor(l2Cache, memory)
 	for i := 0; i < flamego.CoreCount; i++ {
-		l1ICache := NewL1Cache(flamego.L1CacheSizeBytes, l2Cache)
-		l1DCache := NewL1Cache(flamego.L1CacheSizeBytes, l2Cache)
+		l1ICache := NewL1Cache(flamego.SizeL1Cache, l2Cache)
+		l1DCache := NewL1Cache(flamego.SizeL1Cache, l2Cache)
 		core := NewCore(i, processor, l1ICache, l1DCache)
 		processor.AddCore(core)
 		for j := 0; j < flamego.ContextCount; j++ {

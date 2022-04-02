@@ -5,22 +5,12 @@ import (
 	"fmt"
 )
 
-const (
-	// Unit: Bytes
-	LineWidthL1Cache = 64
-	LineWidthL2Cache = 512
-
-	// Unit: Bits
-	OffsetBitsL1Cache = 6
-	OffsetBitsL2Cache = 9
-)
-
 func NewL1Cache(size int, lower flamego.Store) *Cache {
-	return NewCache(size, LineWidthL1Cache, BusSizeL1Cache, OffsetBitsL1Cache, lower)
+	return NewCache(size, flamego.LineWidthL1Cache, flamego.BusSizeL1Cache, flamego.OffsetBitsL1Cache, lower)
 }
 
 func NewL2Cache(size int, lower flamego.Store) *Cache {
-	return NewCache(size, LineWidthL2Cache, BusSizeL2Cache, OffsetBitsL2Cache, lower)
+	return NewCache(size, flamego.LineWidthL2Cache, flamego.BusSizeL2Cache, flamego.OffsetBitsL2Cache, lower)
 }
 
 func NewCache(size, lineWidth, busWidth, offsetBits int, lower flamego.Store) *Cache {

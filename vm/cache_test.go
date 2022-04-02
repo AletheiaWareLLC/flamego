@@ -256,11 +256,14 @@ func TestCache_Flush(t *testing.T) {
 }
 
 func TestCache_Address(t *testing.T) {
-	memory := vm.NewMemory(flamego.MemorySizeBytes)
-	l2Cache := vm.NewL2Cache(flamego.L2CacheSizeBytes, memory)
-	l1Cache := vm.NewL1Cache(flamego.L1CacheSizeBytes, l2Cache)
-
 	address := uint64(0xab54a98ceb1f0ad2)
+
+	memory := vm.NewMemory(flamego.SizeMemory)
+	l2Cache := vm.NewL2Cache(flamego.SizeL2Cache, memory)
+	l1Cache := vm.NewL1Cache(flamego.SizeL1Cache, l2Cache)
+
+	assert.Equal(t, flamego.SizeL2Cache, l2Cache.Size())
+	assert.Equal(t, flamego.LineWidthL2Cache, l2Cache.LineWidth())
 	assert.Equal(t, 41, l2Cache.TagBits())
 	assert.Equal(t, 14, l2Cache.IndexBits())
 	assert.Equal(t, 9, l2Cache.OffsetBits())
@@ -271,6 +274,8 @@ func TestCache_Address(t *testing.T) {
 
 	assert.Equal(t, address, l2Cache.CreateAddress(tag, index, offset))
 
+	assert.Equal(t, flamego.SizeL1Cache, l1Cache.Size())
+	assert.Equal(t, flamego.LineWidthL1Cache, l1Cache.LineWidth())
 	assert.Equal(t, 46, l1Cache.TagBits())
 	assert.Equal(t, 12, l1Cache.IndexBits())
 	assert.Equal(t, 6, l1Cache.OffsetBits())
