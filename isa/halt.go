@@ -5,6 +5,7 @@ import (
 )
 
 type Halt struct {
+	success bool
 }
 
 func NewHalt() *Halt {
@@ -12,11 +13,18 @@ func NewHalt() *Halt {
 }
 
 func (i *Halt) Load(x flamego.Context) (uint64, uint64, uint64) {
+	i.success = true
 	// Do Nothing
 	return 0, 0, 0
 }
 
 func (i *Halt) Execute(x flamego.Context, a, b, c uint64) uint64 {
+	if !x.IsInterrupted() {
+		// Halt only allowed in an interrupt
+		x.Error(flamego.InterruptUnsupportedOperationError)
+		i.success = false
+		return 0
+	}
 	x.Core().Processor().Halt()
 	return 0
 }

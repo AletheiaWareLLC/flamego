@@ -319,7 +319,7 @@ Opcode: 00000001 0000---- -------- --------
 
 Halts the processor.
 
-Only callable during an interrupt.
+Only callable during an interrupt - triggers InterruptUnsupportedOperationError otherwise.
 
 ### Noop
 
@@ -335,7 +335,7 @@ Opcode: 00000001 0010---- -------- --------
 
 Puts the processor to sleep, to be awoken by the next signal.
 
-Only callable during an interrupt.
+Only callable during an interrupt - triggers InterruptUnsupportedOperationError otherwise.
 
 ### Signal
 
@@ -350,7 +350,7 @@ Device addressing;
  - 0-7 core
  - 8-65535 io device
 
-Only callable during an interrupt.
+Only callable during an interrupt - triggers InterruptUnsupportedOperationError otherwise.
 
 ### Lock
 
@@ -359,7 +359,7 @@ Opcode: 00000001 0100---- -------- --------
 
 Acquires the hardware lock.
 
-Only callable during an interrupt.
+Only callable during an interrupt - triggers InterruptUnsupportedOperationError otherwise.
 
 Retryable if lock is not acquired.
 
@@ -370,7 +370,7 @@ Opcode: 00000001 0101---- -------- --------
 
 Releases the hardware lock.
 
-Only callable during an interrupt.
+Only callable during an interrupt - triggers InterruptUnsupportedOperationError otherwise.
 
 Retryable if lock is not released.
 
@@ -397,4 +397,4 @@ A: address register
 programcounter = register[address]
 ```
 
-Only callable during an interrupt.
+Only callable during an interrupt - triggers InterruptUnsupportedOperationError otherwise.

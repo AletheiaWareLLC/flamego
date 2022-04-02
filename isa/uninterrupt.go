@@ -7,6 +7,7 @@ import (
 
 type Uninterrupt struct {
 	AddressRegister flamego.Register
+	success         bool
 }
 
 func NewUninterrupt(r flamego.Register) *Uninterrupt {
@@ -16,11 +17,18 @@ func NewUninterrupt(r flamego.Register) *Uninterrupt {
 }
 
 func (i *Uninterrupt) Load(x flamego.Context) (uint64, uint64, uint64) {
+	i.success = true
 	// Load Return Address
 	return x.ReadRegister(i.AddressRegister), 0, 0
 }
 
 func (i *Uninterrupt) Execute(x flamego.Context, a, b, c uint64) uint64 {
+	if !x.IsInterrupted() {
+		// Uinterrupt only allowed in an interrupt
+		x.Error(flamego.InterruptUnsupportedOperationError)
+		i.success = false
+		return 0
+	}
 	// Do Nothing
 	return a
 }
@@ -31,12 +39,16 @@ func (i *Uninterrupt) Format(x flamego.Context, a uint64) uint64 {
 }
 
 func (i *Uninterrupt) Store(x flamego.Context, a uint64) {
-	// Jump out of interrupt by updating the program counter
-	x.SetProgramCounter(a)
+	if i.success {
+		// Jump out of interrupt by updating the program counter
+		x.SetProgramCounter(a)
+	}
 }
 
 func (i *Uninterrupt) Retire(x flamego.Context) bool {
-	x.SetInterrupted(false)
+	if i.success {
+		x.SetInterrupted(false)
+	}
 	return true
 }
 

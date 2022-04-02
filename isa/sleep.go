@@ -5,6 +5,7 @@ import (
 )
 
 type Sleep struct {
+	success bool
 }
 
 func NewSleep() *Sleep {
@@ -12,11 +13,18 @@ func NewSleep() *Sleep {
 }
 
 func (i *Sleep) Load(x flamego.Context) (uint64, uint64, uint64) {
+	i.success = true
 	// Do Nothing
 	return 0, 0, 0
 }
 
 func (i *Sleep) Execute(x flamego.Context, a, b, c uint64) uint64 {
+	if !x.IsInterrupted() {
+		// Sleep only allowed in an interrupt
+		x.Error(flamego.InterruptUnsupportedOperationError)
+		i.success = false
+		return 0
+	}
 	x.Sleep()
 	return 0
 }
