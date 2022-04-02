@@ -6,7 +6,7 @@ import (
 	"image/color"
 )
 
-const PixelBytes = 8
+const PixelBytes = 4
 
 var _ (flamego.Device) = (*Display)(nil)
 
@@ -89,10 +89,10 @@ func (d *Display) LoadFrame() error {
 		x := index % width
 		y := index / width
 		c := &color.NRGBA{
-			R: mb.Read(count + 0), //Ignore lower order bits
-			G: mb.Read(count + 2), //Ignore lower order bits
-			B: mb.Read(count + 4), //Ignore lower order bits
-			A: mb.Read(count + 6), //Ignore lower order bits
+			R: mb.Read(count + 0),
+			G: mb.Read(count + 1),
+			B: mb.Read(count + 2),
+			A: mb.Read(count + 3),
 		}
 		d.buffer.Set(int(x), int(y), c)
 		d.deviceAddress += PixelBytes
