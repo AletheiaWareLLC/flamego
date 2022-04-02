@@ -32,8 +32,9 @@ type Context struct {
 	requiresLock  bool
 	acquiredLock  bool
 
-	opcode      uint32
-	instruction flamego.Instruction
+	opcode            uint32
+	instruction       flamego.Instruction
+	instructionString string
 }
 
 func (x *Context) Id() int {
@@ -102,6 +103,10 @@ func (x *Context) Opcode() uint32 {
 
 func (x *Context) Instruction() flamego.Instruction {
 	return x.instruction
+}
+
+func (x *Context) InstructionString() string {
+	return x.instructionString
 }
 
 func (x *Context) RequiresLock() bool {
@@ -200,6 +205,7 @@ func (x *Context) DecodeInstruction() {
 		return
 	}
 	x.instruction = isa.Decode(x.opcode)
+	x.instructionString = x.instruction.String()
 	x.status = "decoded instruction"
 }
 
@@ -265,6 +271,7 @@ func (x *Context) RetireInstruction() {
 	if x.instruction.Retire(x) {
 		x.opcode = 0
 		x.instruction = nil
+		x.instructionString = "-"
 		x.status = "retired instruction"
 		x.isRetrying = false
 	} else {
