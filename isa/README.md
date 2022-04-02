@@ -337,6 +337,8 @@ Puts the processor to sleep, to be awoken by the next signal.
 
 Only callable during an interrupt - triggers InterruptUnsupportedOperationError otherwise.
 
+Takes context out of interrupted state as only an uninterrupted context can be interrupted.
+
 ### Signal
 
 Assembly: signal device

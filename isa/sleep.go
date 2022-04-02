@@ -25,6 +25,7 @@ func (i *Sleep) Execute(x flamego.Context, a, b, c uint64) uint64 {
 		i.success = false
 		return 0
 	}
+	x.SetInterrupted(false)
 	x.Sleep()
 	return 0
 }
