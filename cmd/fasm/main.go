@@ -3,12 +3,14 @@ package main
 import (
 	"aletheiaware.com/flamego/assembler"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 )
 
 var (
 	output  = flag.String("o", "", "Output file")
+	address = flag.String("a", "", "Address file")
 	verbose = flag.Bool("v", false, "Log additional information")
 )
 
@@ -42,6 +44,22 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Println("Wrote", count, "bytes")
+
+	if *address != "" {
+		f, err := os.Create(*address)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		for _, a := range a.Addressables() {
+			f.WriteString(fmt.Sprintf("0x%016x", a.AbsoluteAddress()))
+			if s, ok := a.(fmt.Stringer); ok {
+				f.WriteString(": ")
+				f.WriteString(s.String())
+			}
+			f.WriteString("\n")
+		}
+	}
 
 	if *verbose {
 		for n, c := range a.Constants() {

@@ -28,6 +28,10 @@ type assembler struct {
 	statements []intermediate.Addressable
 }
 
+func (a *assembler) Addressables() []intermediate.Addressable {
+	return a.statements
+}
+
 func (a *assembler) Constant(name string) (*intermediate.Data, error) {
 	if c, ok := a.constants[name]; ok {
 		return c, nil
