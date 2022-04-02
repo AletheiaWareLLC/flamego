@@ -16,14 +16,14 @@ const (
 )
 
 func NewL1Cache(size int, lower flamego.Store) *Cache {
-	return newCache(size, LineWidthL1Cache, BusSizeL1Cache, OffsetBitsL1Cache, lower)
+	return NewCache(size, LineWidthL1Cache, BusSizeL1Cache, OffsetBitsL1Cache, lower)
 }
 
 func NewL2Cache(size int, lower flamego.Store) *Cache {
-	return newCache(size, LineWidthL2Cache, BusSizeL2Cache, OffsetBitsL2Cache, lower)
+	return NewCache(size, LineWidthL2Cache, BusSizeL2Cache, OffsetBitsL2Cache, lower)
 }
 
-func newCache(size, lineWidth, busWidth, offsetBits int, lower flamego.Store) *Cache {
+func NewCache(size, lineWidth, busWidth, offsetBits int, lower flamego.Store) *Cache {
 	lineCount := size / lineWidth
 	lines := make([]*CacheLine, lineCount)
 	for i := 0; i < lineCount; i++ {
@@ -49,24 +49,23 @@ func newCache(size, lineWidth, busWidth, offsetBits int, lower flamego.Store) *C
 }
 
 type Cache struct {
-	size              int
-	lineWidth         int
-	lineCount         int
-	lines             []*CacheLine
-	busWidth          int
-	bus               *Bus
-	tagBits           int
-	indexBits         int
-	offsetBits        int
-	recentlyUsedCount int
-	isSuccessful      bool
-	isBusy            bool
-	isFree            bool
-	address           uint64
-	operation         flamego.CacheOperation
-	lower             flamego.Store
-	lowerAddress      uint64
-	lowerOperation    flamego.CacheOperation
+	size           int
+	lineWidth      int
+	lineCount      int
+	lines          []*CacheLine
+	busWidth       int
+	bus            *Bus
+	tagBits        int
+	indexBits      int
+	offsetBits     int
+	isSuccessful   bool
+	isBusy         bool
+	isFree         bool
+	address        uint64
+	operation      flamego.CacheOperation
+	lower          flamego.Store
+	lowerAddress   uint64
+	lowerOperation flamego.CacheOperation
 }
 
 func (c *Cache) Size() int {
@@ -129,10 +128,6 @@ func (c *Cache) LowerOperation() flamego.CacheOperation {
 	return c.lowerOperation
 }
 
-func (c *Cache) RecentlyUsedCount() int {
-	return c.recentlyUsedCount
-}
-
 func (c *Cache) Clock(cycle int) {
 	if c.lower.IsBusy() {
 		// Do nothing
@@ -142,16 +137,48 @@ func (c *Cache) Clock(cycle int) {
 			// Do nothing
 		case flamego.CacheRead:
 			if c.lower.IsSuccessful() {
-				tag, index, offset := c.parseAddress(c.lowerAddress)
+				tag, index, offset := c.ParseAddress(c.lowerAddress)
 				if offset != 0 {
 					panic("Unaligned Cache Update")
 				}
 				line := c.lines[index]
-				if line.tag == tag {
-					c.setRecentlyUsed(index)
-				} else {
-					// TODO Cache line already in use, need to write out to lower store but the bus is currently full of data from previous lower read
-					panic("Not Yet Implemented")
+				if line.tag != tag {
+					writeback := false
+					for i := 0; i < c.lineWidth; i++ {
+						if line.IsValid(i) && line.IsDirty(i) {
+							writeback = true
+						}
+					}
+					if writeback {
+						victim := c.CreateAddress(line.tag, index, 0)
+						// Swap values with values in bus
+						lb := c.lower.Bus()
+						for i := 0; i < c.lineWidth; i++ {
+							n := lb.Read(i) // New
+							nv := lb.IsValid(i)
+							o := line.Read(i) // Old
+							ov := line.IsValid(i)
+							od := line.IsDirty(i)
+							if ov && od {
+								lb.Write(i, o)
+							} else {
+								lb.SetValid(i, false)
+								lb.SetDirty(i, false)
+							}
+							if nv {
+								line.Write(i, n)
+							} else {
+								line.SetValid(i, false)
+							}
+							line.SetDirty(i, false)
+						}
+						line.tag = tag
+						// Issue a write
+						c.lowerAddress = victim
+						c.lowerOperation = flamego.CacheWrite
+						c.lower.Write(victim)
+						break // Don't free lower
+					}
 				}
 				lb := c.lower.Bus()
 				// Copy from lower bus into cache line
@@ -166,20 +193,20 @@ func (c *Cache) Clock(cycle int) {
 				// If lower was unsuccessful it will get retried
 			}
 			c.lower.Free()
+			c.lowerOperation = flamego.CacheNone
 		case flamego.CacheWrite:
 			if c.lower.IsSuccessful() {
-				tag, index, offset := c.parseAddress(c.lowerAddress)
+				tag, index, offset := c.ParseAddress(c.lowerAddress)
 				if offset != 0 {
 					panic("Unaligned Cache Update")
 				}
 				line := c.lines[index]
-				if line.tag != tag {
-					panic("Lower write doesn't match cache line tag")
-				}
-				lb := c.lower.Bus()
-				for i := 0; i < c.lineWidth; i++ {
-					if line.IsValid(i) && lb.IsValid(i) && line.Read(i) == lb.Read(i) {
-						line.SetDirty(i, false)
+				if line.tag == tag {
+					lb := c.lower.Bus()
+					for i := 0; i < c.lineWidth; i++ {
+						if line.IsValid(i) && lb.IsValid(i) && line.Read(i) == lb.Read(i) {
+							line.SetDirty(i, false)
+						}
 					}
 				}
 			} else {
@@ -187,14 +214,14 @@ func (c *Cache) Clock(cycle int) {
 				panic("Not Yet Implemented")
 			}
 			c.lower.Free()
+			c.lowerOperation = flamego.CacheNone
 		default:
 			panic(fmt.Errorf("Unrecognized Lower Cache Operation: %v", c.lowerOperation))
 		}
-		c.lowerOperation = flamego.CacheNone
 	}
 
 	if c.isBusy {
-		tag, index, offset := c.parseAddress(c.address)
+		tag, index, offset := c.ParseAddress(c.address)
 
 		line := c.lines[index]
 		c.isSuccessful = false
@@ -220,10 +247,11 @@ func (c *Cache) Clock(cycle int) {
 				for i := 0; i < c.busWidth && a < c.lineWidth; i, a = i+1, a+1 {
 					if line.IsValid(i) {
 						c.bus.Write(i, line.Read(a))
-						c.bus.SetDirty(i, false)
+					} else {
+						c.bus.SetValid(i, false)
 					}
+					c.bus.SetDirty(i, false)
 				}
-				c.setRecentlyUsed(index)
 			} else {
 				// Issue read request to lower store
 				// Clearing all offset bits read whole aligned line
@@ -233,21 +261,43 @@ func (c *Cache) Clock(cycle int) {
 			if c.isSuccessful {
 				a := int(offset)
 				for i := 0; i < c.busWidth && a < c.lineWidth; i, a = i+1, a+1 {
-					if !c.bus.IsDirty(i) {
+					if !c.bus.IsValid(i) || !c.bus.IsDirty(i) {
 						continue
 					}
 					c.bus.SetDirty(i, false)
-					v := c.bus.Read(i)
-					o := line.Read(a)
-					line.Write(a, v)
-					line.SetDirty(a, o != v) // Dirty if changed
+					line.Write(a, c.bus.Read(i))
 				}
-				c.setRecentlyUsed(index)
 			} else {
-				panic("Not Yet Implemented")
-				// TODO pick a line to evict
-				//  - if any values are dirty, write them to lower store
-				//  - if no values are dirty, reassign line to this tag
+				victim := c.CreateAddress(line.tag, index, 0)
+				writeback := false
+				for i := 0; i < c.lineWidth; i++ {
+					if line.IsValid(i) && line.IsDirty(i) {
+						writeback = true
+						break
+					}
+				}
+				if writeback {
+					// Write back to lower
+					c.lowerWrite(victim, line)
+				} else {
+					// Repurpose line for tag
+					line.tag = tag
+					c.isSuccessful = true
+					a := int(offset)
+					for i := 0; i < a; i++ {
+						line.SetValid(i, false)
+						line.SetDirty(i, false)
+					}
+					for i := 0; i < c.busWidth && a < c.lineWidth; i, a = i+1, a+1 {
+						if !c.bus.IsValid(i) || !c.bus.IsDirty(i) {
+							line.SetValid(i, false)
+							line.SetDirty(i, false)
+							continue
+						}
+						c.bus.SetDirty(i, false)
+						line.Write(a, c.bus.Read(i))
+					}
+				}
 			}
 		case flamego.CacheClear:
 			if c.isSuccessful {
@@ -255,7 +305,6 @@ func (c *Cache) Clock(cycle int) {
 				for i := 0; i < flamego.DataSize && a < c.lineWidth; i, a = i+1, a+1 {
 					line.SetValid(a, false)
 				}
-				c.setRecentlyUsed(index)
 			}
 			c.isSuccessful = true
 		case flamego.CacheFlush:
@@ -273,8 +322,8 @@ func (c *Cache) Clock(cycle int) {
 				// Issue write request to lower store
 				// Clearing all offset bits to flush whole aligned line
 				c.isSuccessful = c.lowerWrite((c.address>>c.offsetBits)<<c.offsetBits, line)
-				c.setRecentlyUsed(index)
 			} else {
+				// Cache doesn't contain the data for the given address, so nothing to flush, success!
 				c.isSuccessful = true
 			}
 		default:
@@ -341,24 +390,14 @@ func (c *Cache) Flush(address uint64) {
 	c.address = address
 }
 
-func (c *Cache) setRecentlyUsed(index uint64) {
-	line := c.lines[index]
-	c.recentlyUsedCount++
-	if c.recentlyUsedCount > c.lineCount/2 {
-		c.recentlyUsedCount = 0
-		for _, l := range c.lines {
-			l.recentlyUsed = false
-		}
-	}
-	line.recentlyUsed = true
-}
-
-func (c *Cache) lowerRead(address uint64) {
+func (c *Cache) lowerRead(address uint64) bool {
 	if !c.lower.IsBusy() && c.lower.IsFree() {
 		c.lowerAddress = address
 		c.lowerOperation = flamego.CacheRead
 		c.lower.Read(address)
+		return true
 	}
+	return false
 }
 
 func (c *Cache) lowerWrite(address uint64, line *CacheLine) bool {
@@ -366,14 +405,19 @@ func (c *Cache) lowerWrite(address uint64, line *CacheLine) bool {
 		c.lowerAddress = address
 		c.lowerOperation = flamego.CacheWrite
 		// Copy values into bus
-		b := c.lower.Bus()
-		for i := 0; i < b.Size(); i++ {
-			if line.IsDirty(i) {
-				b.Write(i, line.Read(i))
-				b.SetDirty(i, true)
+		lb := c.lower.Bus()
+		i := 0
+		for ; i < lb.Size() && i < c.lineWidth; i++ {
+			if line.IsValid(i) && line.IsDirty(i) {
+				lb.Write(i, line.Read(i))
 			} else {
-				b.SetValid(i, false)
+				lb.SetValid(i, false)
+				lb.SetDirty(i, false)
 			}
+		}
+		for ; i < c.lineWidth; i++ {
+			lb.SetValid(i, false)
+			lb.SetDirty(i, false)
 		}
 		c.lower.Write(address)
 		return true
@@ -381,7 +425,7 @@ func (c *Cache) lowerWrite(address uint64, line *CacheLine) bool {
 	return false
 }
 
-func (c *Cache) parseAddress(a uint64) (uint64, uint64, uint64) {
+func (c *Cache) ParseAddress(a uint64) (uint64, uint64, uint64) {
 	tagMask := (uint64(1) << c.tagBits) - 1
 	indexMask := (uint64(1) << c.indexBits) - 1
 	offsetMask := (uint64(1) << c.offsetBits) - 1
@@ -393,10 +437,13 @@ func (c *Cache) parseAddress(a uint64) (uint64, uint64, uint64) {
 	return tag, index, offset
 }
 
+func (c *Cache) CreateAddress(tag, index, offset uint64) uint64 {
+	return tag<<(c.indexBits+c.offsetBits) | index<<c.offsetBits | offset
+}
+
 type CacheLine struct {
 	Bus
-	tag          uint64
-	recentlyUsed bool
+	tag uint64
 }
 
 func NewCacheLine(size int) *CacheLine {
