@@ -29,7 +29,15 @@ type parser struct {
 func (p *parser) Parse() error {
 	p.lexer.Move()
 	for !p.lexer.CurrentIs(CategoryEOF) {
-		if p.lexer.CurrentIs(CategoryPadding) {
+		if p.lexer.CurrentIs(CategoryAlign) {
+			p.lexer.Move()
+			count, err := p.matchNumber()
+			if err != nil {
+				return err
+			}
+			comment := p.matchOptionalComment()
+			p.assembler.AddStatement(intermediate.NewAlign(count, comment))
+		} else if p.lexer.CurrentIs(CategoryPadding) {
 			p.lexer.Move()
 			count, err := p.matchNumber()
 			if err != nil {

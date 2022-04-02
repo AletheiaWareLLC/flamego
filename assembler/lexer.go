@@ -22,6 +22,7 @@ func NewLexer() Lexer {
 			NewLexemLiteral(CategoryColon, ":"),
 			NewLexemLiteral(CategoryFullStop, "."),
 			NewLexemRegexp(CategoryComment, "^//.*\n?$"),
+			NewLexemLiteral(CategoryAlign, "align"),
 			NewLexemLiteral(CategoryPadding, "padding"),
 			NewLexemLiteral(CategoryData, "data"),
 			NewLexemLiteral(CategoryComma, ","),

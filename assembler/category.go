@@ -13,6 +13,7 @@ const (
 	CategoryUpperName
 	CategoryLowerName
 	CategoryNumber
+	CategoryAlign
 	CategoryPadding
 	CategoryData
 	CategoryStatement
