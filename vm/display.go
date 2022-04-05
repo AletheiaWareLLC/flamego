@@ -103,8 +103,6 @@ func (d *Display) LoadFrame() error {
 		d.isBusy = false
 		d.operation = flamego.DeviceNone
 		d.SignalController()
-	} else {
-		//panic("RAWR")
 	}
 	return nil
 }
