@@ -115,6 +115,36 @@ func (p *parser) matchRegister() (flamego.Register, error) {
 	if err != nil {
 		return 0, err
 	}
+	switch r {
+	case "rZero":
+		return flamego.R0, nil
+	case "rOne":
+		return flamego.R1, nil
+	case "rCID":
+		return flamego.RCoreIdentifier, nil
+	case "rXID":
+		return flamego.RContextIdentifier, nil
+	case "rIVT":
+		return flamego.RInterruptVectorTable, nil
+	case "rPID":
+		return flamego.RProcessIdentifier, nil
+	case "rPC":
+		return flamego.RProgramCounter, nil
+	case "rPS":
+		return flamego.RProgramStart, nil
+	case "rPL":
+		return flamego.RProgramLimit, nil
+	case "rSP":
+		return flamego.RStackPointer, nil
+	case "rSS":
+		return flamego.RStackStart, nil
+	case "rSL":
+		return flamego.RStackLimit, nil
+	case "rDS":
+		return flamego.RDataStart, nil
+	case "rDL":
+		return flamego.RDataLimit, nil
+	}
 	ok, err := regexp.MatchString(`r[\\d]*`, r)
 	if err != nil {
 		return 0, err
