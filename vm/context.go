@@ -83,6 +83,7 @@ func (x *Context) Error(value flamego.InterruptValue) {
 		panic("Double Interrupt")
 	}
 	x.nextInterrupt = value
+	x.status = "error"
 }
 
 func (x *Context) Signal() {
@@ -141,6 +142,11 @@ func (x *Context) FetchInstruction() {
 		pc := x.ReadRegister(flamego.RProgramCounter)
 		if !x.isInterrupted {
 			pc += x.ReadRegister(flamego.RProgramStart)
+			if pc > x.ReadRegister(flamego.RProgramLimit) {
+				x.Error(flamego.InterruptProgramAccessError)
+				x.isValid = false
+				return
+			}
 		}
 		is := x.core.InstructionCache()
 		if is.IsBusy() || !is.IsFree() {
