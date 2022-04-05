@@ -11,15 +11,15 @@ var _ Emittable = (*Pop)(nil)
 
 type Pop struct {
 	Statement
-	register flamego.Register
+	mask uint16
 }
 
-func NewPop(r flamego.Register, c string) *Pop {
+func NewPop(m uint16, c string) *Pop {
 	return &Pop{
 		Statement: Statement{
 			comment: c,
 		},
-		register: r,
+		mask: m,
 	}
 }
 
@@ -38,5 +38,5 @@ func (a *Pop) EmittedSize() uint32 {
 }
 
 func (a *Pop) Instruction() flamego.Instruction {
-	return isa.NewPop(a.register)
+	return isa.NewPop(a.mask)
 }

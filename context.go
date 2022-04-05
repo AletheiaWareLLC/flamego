@@ -24,10 +24,10 @@ type Context interface {
 	FetchInstruction()
 	LoadInstruction()
 	DecodeInstruction()
-	LoadData() (uint64, uint64, uint64)
-	ExecuteOperation(uint64, uint64, uint64) uint64
-	FormatData(uint64) uint64
-	StoreData(uint64)
+	LoadData() (uint64, uint64, uint64, uint64)
+	ExecuteOperation(uint64, uint64, uint64, uint64) (uint64, uint64)
+	FormatData(uint64, uint64) (uint64, uint64)
+	StoreData(uint64, uint64)
 	RetireInstruction()
 
 	ReadRegister(Register) uint64

@@ -132,6 +132,49 @@ func (p *parser) matchRegister() (flamego.Register, error) {
 	return flamego.Register(v), nil
 }
 
+func (p *parser) matchWritableRegister() (flamego.Register, error) {
+	r, err := p.matchRegister()
+	if err != nil {
+		return 0, err
+	}
+	switch r {
+	case flamego.R0, flamego.R1, flamego.R2, flamego.R3:
+		return 0, &Error{p.lexer.Line(), fmt.Sprintf("Register Not Writeable: '%d'", r)}
+	}
+	return r, nil
+}
+
+func (p *parser) matchRegisterMask(ascending bool) (uint16, error) {
+	var mask uint16
+	var last flamego.Register
+	if ascending {
+		last = 15
+	} else {
+		last = 32
+	}
+	for {
+		r, err := p.matchRegister()
+		if err != nil {
+			return 0, err
+		}
+		if r < flamego.R16 {
+			return 0, &Error{p.lexer.Line(), fmt.Sprintf("General Purpose Register Index Out of Bounds: '%d'", r)}
+		}
+		if (ascending && r < last) || (!ascending && r > last) {
+			return 0, &Error{p.lexer.Line(), fmt.Sprintf("Register List Out Of Order: '%d'", r)}
+		}
+		mask |= (1 << (flamego.R31 - r))
+		last = r
+
+		if p.lexer.CurrentIs(CategoryComma) {
+			p.lexer.Move()
+		} else {
+			break
+		}
+	}
+	return mask, nil
+}
+
 func (p *parser) matchStatement() (intermediate.Addressable, error) {
 	if p.lexer.CurrentIs(CategoryLabel) {
 		name := p.lexer.Current().Value
@@ -232,24 +275,20 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		}
 		return intermediate.NewCall(a, p.matchOptionalComment()), nil
 	case "return":
-		a, err := p.matchRegister()
-		if err != nil {
-			return nil, err
-		}
-		return intermediate.NewReturn(a, p.matchOptionalComment()), nil
+		return intermediate.NewReturn(p.matchOptionalComment()), nil
 	case "loadc":
 		c := p.lexer.Current()
 		switch c.Category {
 		case CategoryLabel:
 			p.lexer.Move()
-			r, err := p.matchRegister()
+			r, err := p.matchWritableRegister()
 			if err != nil {
 				return nil, err
 			}
 			return intermediate.NewLoadCWithLabel(c.Value, r, p.matchOptionalComment()), nil
 		case CategoryUpperName:
 			p.lexer.Move()
-			r, err := p.matchRegister()
+			r, err := p.matchWritableRegister()
 			if err != nil {
 				return nil, err
 			}
@@ -259,7 +298,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 			if err != nil {
 				return nil, err
 			}
-			r, err := p.matchRegister()
+			r, err := p.matchWritableRegister()
 			if err != nil {
 				return nil, err
 			}
@@ -274,14 +313,14 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		switch c.Category {
 		case CategoryLabel:
 			p.lexer.Move()
-			r, err := p.matchRegister()
+			r, err := p.matchWritableRegister()
 			if err != nil {
 				return nil, err
 			}
 			return intermediate.NewLoadWithLabel(a, c.Value, r, p.matchOptionalComment()), nil
 		case CategoryUpperName:
 			p.lexer.Move()
-			r, err := p.matchRegister()
+			r, err := p.matchWritableRegister()
 			if err != nil {
 				return nil, err
 			}
@@ -291,7 +330,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 			if err != nil {
 				return nil, err
 			}
-			d, err := p.matchRegister()
+			d, err := p.matchWritableRegister()
 			if err != nil {
 				return nil, err
 			}
@@ -370,25 +409,23 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 			return intermediate.NewFlushWithOffset(a, uint32(o), p.matchOptionalComment()), nil
 		}
 	case "push":
-		// TODO support register lists
-		a, err := p.matchRegister()
+		m, err := p.matchRegisterMask(true)
 		if err != nil {
 			return nil, err
 		}
-		return intermediate.NewPush(a, p.matchOptionalComment()), nil
+		return intermediate.NewPush(m, p.matchOptionalComment()), nil
 	case "pop":
-		// TODO support register lists
-		a, err := p.matchRegister()
+		m, err := p.matchRegisterMask(false)
 		if err != nil {
 			return nil, err
 		}
-		return intermediate.NewPop(a, p.matchOptionalComment()), nil
+		return intermediate.NewPop(m, p.matchOptionalComment()), nil
 	case "not":
 		s, err := p.matchRegister()
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}
@@ -402,7 +439,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}
@@ -416,7 +453,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}
@@ -430,7 +467,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}
@@ -444,7 +481,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}
@@ -458,7 +495,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}
@@ -472,7 +509,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}
@@ -486,7 +523,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}
@@ -500,7 +537,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}
@@ -514,7 +551,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}
@@ -528,7 +565,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}
@@ -538,7 +575,7 @@ func (p *parser) matchStatement() (intermediate.Addressable, error) {
 		if err != nil {
 			return nil, err
 		}
-		d, err := p.matchRegister()
+		d, err := p.matchWritableRegister()
 		if err != nil {
 			return nil, err
 		}

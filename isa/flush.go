@@ -22,22 +22,22 @@ func NewFlush(a flamego.Register, o uint32) *Flush {
 	}
 }
 
-func (i *Flush) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *Flush) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	i.success = true
 	// Load Base Register
 	a := x.ReadRegister(i.AddressRegister)
 	// Load Offset
 	b := uint64(i.Offset)
-	return a, b, 0
+	return a, b, 0, 0
 }
 
-func (i *Flush) Execute(x flamego.Context, a, b, c uint64) uint64 {
+func (i *Flush) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 	address := a + b
 	if !i.issuedL1D {
 		l1d := x.Core().DataCache()
 		if l1d.IsBusy() || !l1d.IsFree() {
 			i.success = false // Cache Unavailable
-			return 0
+			return 0, 0
 		}
 
 		// Issue Flush Request
@@ -47,19 +47,19 @@ func (i *Flush) Execute(x flamego.Context, a, b, c uint64) uint64 {
 		l2 := x.Core().Processor().Cache()
 		if l2.IsBusy() || !l2.IsFree() {
 			i.success = false // Cache Unavailable
-			return 0
+			return 0, 0
 		}
 
 		// Issue Flush Request
 		l2.Flush(address)
 		i.issuedL2 = true
 	}
-	return 0
+	return 0, 0
 }
 
-func (i *Flush) Format(x flamego.Context, a uint64) uint64 {
+func (i *Flush) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 	if !i.success {
-		return 0
+		return 0, 0
 	}
 	if !i.flushedL1D {
 		l1d := x.Core().DataCache()
@@ -86,10 +86,10 @@ func (i *Flush) Format(x flamego.Context, a uint64) uint64 {
 			l2.Free() // Free Cache
 		}
 	}
-	return 0
+	return 0, 0
 }
 
-func (i *Flush) Store(x flamego.Context, a uint64) {
+func (i *Flush) Store(x flamego.Context, a, b uint64) {
 	// Do Nothing
 }
 

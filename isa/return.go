@@ -2,53 +2,77 @@ package isa
 
 import (
 	"aletheiaware.com/flamego"
-	"fmt"
+	"encoding/binary"
 )
 
 type Return struct {
-	AddressRegister flamego.Register
-	success         bool
+	success bool
+	issued  bool
 }
 
-func NewReturn(a flamego.Register) *Return {
-	return &Return{
-		AddressRegister: a,
-	}
+func NewReturn() *Return {
+	return &Return{}
 }
 
-func (i *Return) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *Return) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	i.success = true
-	// Load Address Register
-	a := x.ReadRegister(i.AddressRegister)
-	// Load Program Start Register
-	b := x.ReadRegister(flamego.RProgramStart)
-	// Load Program Limit Register
-	c := x.ReadRegister(flamego.RProgramLimit)
-	return a, b, c
+	// Load Stack Pointer Register
+	a := x.ReadRegister(flamego.RStackPointer)
+	// Load Stack Start Register
+	b := x.ReadRegister(flamego.RStackStart)
+	return a, b, 0, 0
 }
 
-func (i *Return) Execute(x flamego.Context, a, b, c uint64) uint64 {
-	if !x.IsInterrupted() {
-		// Only add program start if not in an interrupt
-		a += b
-		if a > c {
-			x.Error(flamego.InterruptProgramAccessError)
-			i.success = false
-			return 0
+func (i *Return) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
+	// Decrement Stack Pointer
+	a -= flamego.DataSize
+
+	if a < b {
+		x.Error(flamego.InterruptStackUnderflowError)
+		i.success = false
+	} else if !i.issued {
+		l1d := x.Core().DataCache()
+		if l1d.IsBusy() || !l1d.IsFree() {
+			i.success = false // Cache Unavailable
+			return 0, 0
 		}
+		// Issue Read Request
+		l1d.Read(a)
+		i.issued = true
 	}
-	return a
+	return a, 0
 }
 
-func (i *Return) Format(x flamego.Context, a uint64) uint64 {
-	// Pass Through
-	return a
+func (i *Return) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
+	if !i.success {
+		return 0, 0
+	}
+	l1d := x.Core().DataCache()
+	if l1d.IsBusy() {
+		i.success = false
+	} else if !l1d.IsSuccessful() {
+		i.success = false
+		i.issued = false // Reissue Request
+		l1d.Free()       // Free Cache
+	} else {
+		// Copy Data from Bus
+		buffer := make([]byte, 8)
+		for i := 0; i < 8; i++ {
+			buffer[i] = l1d.Bus().Read(i)
+		}
+		l1d.Free() // Free Cache
+		b := binary.BigEndian.Uint64(buffer)
+		return a, b
+	}
+	return a, 0
 }
 
-func (i *Return) Store(x flamego.Context, a uint64) {
+func (i *Return) Store(x flamego.Context, a, b uint64) {
 	if i.success {
+		// Update Stack Pointer
+		x.WriteRegister(flamego.RStackPointer, a)
 		// Update Program Counter
-		x.SetProgramCounter(a)
+		x.WriteRegister(flamego.RProgramCounter, b)
 	}
 }
 
@@ -58,5 +82,5 @@ func (i *Return) Retire(x flamego.Context) bool {
 }
 
 func (i *Return) String() string {
-	return fmt.Sprintf("return %s", i.AddressRegister)
+	return "return"
 }

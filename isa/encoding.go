@@ -64,13 +64,13 @@ func Encode(instruction flamego.Instruction) uint32 {
 	case *Modulo:
 		return (1 << 28) | (12 << 24) | (uint32(i.Source2Register) << 10) | (uint32(i.Source1Register) << 5) | uint32(i.DestinationRegister)
 	case *Push:
-		return (1 << 26) | uint32(i.SourceRegister)
+		return (1 << 26) | uint32(i.Mask)
 	case *Pop:
-		return (1 << 26) | (1 << 25) | uint32(i.DestinationRegister)
+		return (1 << 26) | (1 << 25) | uint32(i.Mask)
 	case *Call:
 		return (1 << 25) | uint32(i.AddressRegister)
 	case *Return:
-		return (1 << 25) | (1 << 24) | uint32(i.AddressRegister)
+		return (1 << 25) | (1 << 24)
 	case *Halt:
 		return (1 << 24)
 	case *Noop:
@@ -149,17 +149,16 @@ func Decode(opcode uint32) flamego.Instruction {
 			return NewModulo(s1, s2, d)
 		}
 	} else if (opcode >> 26) == 0x1 {
-		r := flamego.Register(opcode & WidthRegister)
+		m := uint16(opcode & Width16Bit)
 		if (opcode>>25)&Width1Bit == 0x1 {
-			return NewPop(r)
+			return NewPop(m)
 		}
-		return NewPush(r)
+		return NewPush(m)
 	} else if (opcode >> 25) == 0x1 {
-		r := flamego.Register(opcode & WidthRegister)
 		if (opcode>>24)&Width1Bit == 0x1 {
-			return NewReturn(r)
+			return NewReturn()
 		}
-		return NewCall(r)
+		return NewCall(flamego.Register(opcode & WidthRegister))
 	} else if (opcode >> 24) == 0x1 {
 		switch (opcode >> 20) & Width4Bit {
 		case 0:

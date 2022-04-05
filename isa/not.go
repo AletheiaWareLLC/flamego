@@ -17,21 +17,21 @@ func NewNot(s, d flamego.Register) *Not {
 	}
 }
 
-func (i *Not) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *Not) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	// Load Source Register
 	a := x.ReadRegister(i.SourceRegister)
-	return a, 0, 0
+	return a, 0, 0, 0
 }
 
-func (i *Not) Execute(x flamego.Context, a, b, c uint64) uint64 {
-	return ^a
+func (i *Not) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
+	return ^a, 0
 }
 
-func (i *Not) Format(x flamego.Context, a uint64) uint64 {
-	return a
+func (i *Not) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
+	return a, 0
 }
 
-func (i *Not) Store(x flamego.Context, a uint64) {
+func (i *Not) Store(x flamego.Context, a, b uint64) {
 	// Write Destination Register
 	x.WriteRegister(i.DestinationRegister, a)
 }

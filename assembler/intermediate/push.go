@@ -11,15 +11,15 @@ var _ Emittable = (*Push)(nil)
 
 type Push struct {
 	Statement
-	register flamego.Register
+	mask uint16
 }
 
-func NewPush(r flamego.Register, c string) *Push {
+func NewPush(m uint16, c string) *Push {
 	return &Push{
 		Statement: Statement{
 			comment: c,
 		},
-		register: r,
+		mask: m,
 	}
 }
 
@@ -38,5 +38,5 @@ func (a *Push) EmittedSize() uint32 {
 }
 
 func (a *Push) Instruction() flamego.Instruction {
-	return isa.NewPush(a.register)
+	return isa.NewPush(a.mask)
 }

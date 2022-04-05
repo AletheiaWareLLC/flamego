@@ -22,7 +22,7 @@ func NewStore(a flamego.Register, o uint32, r flamego.Register) *Store {
 	}
 }
 
-func (i *Store) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *Store) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	i.success = true
 	// Load Base Register
 	a := x.ReadRegister(i.AddressRegister)
@@ -30,15 +30,15 @@ func (i *Store) Load(x flamego.Context) (uint64, uint64, uint64) {
 	b := uint64(i.Offset)
 	// Load Source Register
 	c := x.ReadRegister(i.SourceRegister)
-	return a, b, c
+	return a, b, c, 0
 }
 
-func (i *Store) Execute(x flamego.Context, a, b, c uint64) uint64 {
+func (i *Store) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 	if !i.issued {
 		l1d := x.Core().DataCache()
 		if l1d.IsBusy() || !l1d.IsFree() {
 			i.success = false // Cache Unavailable
-			return 0
+			return 0, 0
 		}
 		// Copy Data to Bus
 		buffer := make([]byte, 8)
@@ -50,12 +50,12 @@ func (i *Store) Execute(x flamego.Context, a, b, c uint64) uint64 {
 		l1d.Write(a + b)
 		i.issued = true
 	}
-	return 0
+	return 0, 0
 }
 
-func (i *Store) Format(x flamego.Context, a uint64) uint64 {
+func (i *Store) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 	if !i.success {
-		return 0
+		return 0, 0
 	}
 	l1d := x.Core().DataCache()
 	if l1d.IsBusy() {
@@ -67,10 +67,10 @@ func (i *Store) Format(x flamego.Context, a uint64) uint64 {
 	} else {
 		l1d.Free() // Free Cache
 	}
-	return 0
+	return 0, 0
 }
 
-func (i *Store) Store(x flamego.Context, a uint64) {
+func (i *Store) Store(x flamego.Context, a, b uint64) {
 	// Do Nothing
 }
 

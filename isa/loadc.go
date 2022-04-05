@@ -17,22 +17,22 @@ func NewLoadC(c uint32, r flamego.Register) *LoadC {
 	}
 }
 
-func (i *LoadC) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *LoadC) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	// Load Constant
-	return uint64(i.Constant), 0, 0
+	return uint64(i.Constant), 0, 0, 0
 }
 
-func (i *LoadC) Execute(x flamego.Context, a, b, c uint64) uint64 {
+func (i *LoadC) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 	// Pass Through
-	return a
+	return a, 0
 }
 
-func (i *LoadC) Format(x flamego.Context, a uint64) uint64 {
+func (i *LoadC) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 	// Pass Through
-	return a
+	return a, 0
 }
 
-func (i *LoadC) Store(x flamego.Context, a uint64) {
+func (i *LoadC) Store(x flamego.Context, a, b uint64) {
 	// Write Destination Register
 	x.WriteRegister(i.DestinationRegister, a)
 }

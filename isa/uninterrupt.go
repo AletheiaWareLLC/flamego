@@ -16,29 +16,28 @@ func NewUninterrupt(r flamego.Register) *Uninterrupt {
 	}
 }
 
-func (i *Uninterrupt) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *Uninterrupt) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	i.success = true
 	// Load Return Address
-	return x.ReadRegister(i.AddressRegister), 0, 0
+	return x.ReadRegister(i.AddressRegister), 0, 0, 0
 }
 
-func (i *Uninterrupt) Execute(x flamego.Context, a, b, c uint64) uint64 {
+func (i *Uninterrupt) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 	if !x.IsInterrupted() {
 		// Uinterrupt only allowed in an interrupt
 		x.Error(flamego.InterruptUnsupportedOperationError)
 		i.success = false
-		return 0
+		return 0, 0
 	}
-	// Do Nothing
-	return a
+	return a, 0
 }
 
-func (i *Uninterrupt) Format(x flamego.Context, a uint64) uint64 {
+func (i *Uninterrupt) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 	// Do Nothing
-	return a
+	return a, 0
 }
 
-func (i *Uninterrupt) Store(x flamego.Context, a uint64) {
+func (i *Uninterrupt) Store(x flamego.Context, a, b uint64) {
 	if i.success {
 		// Jump out of interrupt by updating the program counter
 		x.SetProgramCounter(a)

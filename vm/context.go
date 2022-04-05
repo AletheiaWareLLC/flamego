@@ -142,7 +142,7 @@ func (x *Context) FetchInstruction() {
 		pc := x.ReadRegister(flamego.RProgramCounter)
 		if !x.isInterrupted {
 			pc += x.ReadRegister(flamego.RProgramStart)
-			if pc > x.ReadRegister(flamego.RProgramLimit) {
+			if pc >= x.ReadRegister(flamego.RProgramLimit) {
 				x.Error(flamego.InterruptProgramAccessError)
 				x.isValid = false
 				return
@@ -215,46 +215,46 @@ func (x *Context) DecodeInstruction() {
 	x.status = "decoded instruction"
 }
 
-func (x *Context) LoadData() (a, b, c uint64) {
+func (x *Context) LoadData() (uint64, uint64, uint64, uint64) {
 	if !x.isValid {
-		return
+		return 0, 0, 0, 0
 	}
 	if x.isAsleep {
 		x.sleepCycles++
-		return
+		return 0, 0, 0, 0
 	}
-	a, b, c = x.instruction.Load(x)
+	a, b, c, d := x.instruction.Load(x)
 	x.status = "loaded data"
-	return
+	return a, b, c, d
 }
 
-func (x *Context) ExecuteOperation(a, b, c uint64) (r uint64) {
+func (x *Context) ExecuteOperation(a, b, c, d uint64) (uint64, uint64) {
 	if !x.isValid {
-		return
+		return 0, 0
 	}
 	if x.isAsleep {
 		x.sleepCycles++
-		return
+		return 0, 0
 	}
-	r = x.instruction.Execute(x, a, b, c)
+	e, f := x.instruction.Execute(x, a, b, c, d)
 	x.status = "executed operation"
-	return
+	return e, f
 }
 
-func (x *Context) FormatData(a uint64) (r uint64) {
+func (x *Context) FormatData(e, f uint64) (uint64, uint64) {
 	if !x.isValid {
-		return
+		return 0, 0
 	}
 	if x.isAsleep {
 		x.sleepCycles++
-		return
+		return 0, 0
 	}
-	r = x.instruction.Format(x, a)
+	g, h := x.instruction.Format(x, e, f)
 	x.status = "formatted data"
-	return
+	return g, h
 }
 
-func (x *Context) StoreData(a uint64) {
+func (x *Context) StoreData(g, h uint64) {
 	if !x.isValid {
 		return
 	}
@@ -262,7 +262,7 @@ func (x *Context) StoreData(a uint64) {
 		x.sleepCycles++
 		return
 	}
-	x.instruction.Store(x, a)
+	x.instruction.Store(x, g, h)
 	x.status = "stored data"
 }
 

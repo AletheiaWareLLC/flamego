@@ -19,23 +19,23 @@ func NewAdd(s1, s2, d flamego.Register) *Add {
 	}
 }
 
-func (i *Add) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *Add) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	// Load Source 1 Register
 	a := x.ReadRegister(i.Source1Register)
 	// Load Source 2 Register
 	b := x.ReadRegister(i.Source2Register)
-	return a, b, 0
+	return a, b, 0, 0
 }
 
-func (i *Add) Execute(x flamego.Context, a, b, c uint64) uint64 {
-	return a + b
+func (i *Add) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
+	return a + b, 0
 }
 
-func (i *Add) Format(x flamego.Context, a uint64) uint64 {
-	return a
+func (i *Add) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
+	return a, 0
 }
 
-func (i *Add) Store(x flamego.Context, a uint64) {
+func (i *Add) Store(x flamego.Context, a, b uint64) {
 	// Write Destination Register
 	x.WriteRegister(i.DestinationRegister, a)
 }

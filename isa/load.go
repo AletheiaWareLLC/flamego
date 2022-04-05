@@ -22,32 +22,32 @@ func NewLoad(a flamego.Register, o uint32, r flamego.Register) *Load {
 	}
 }
 
-func (i *Load) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *Load) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	i.success = true
 	// Load Base Register
 	a := x.ReadRegister(i.AddressRegister)
 	// Load Address
 	b := uint64(i.Offset)
-	return a, b, 0
+	return a, b, 0, 0
 }
 
-func (i *Load) Execute(x flamego.Context, a, b, c uint64) uint64 {
+func (i *Load) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 	if !i.issued {
 		l1d := x.Core().DataCache()
 		if l1d.IsBusy() || !l1d.IsFree() {
 			i.success = false // Cache Unavailable
-			return 0
+			return 0, 0
 		}
 		// Issue Read Request
 		l1d.Read(a + b)
 		i.issued = true
 	}
-	return 0
+	return 0, 0
 }
 
-func (i *Load) Format(x flamego.Context, a uint64) uint64 {
+func (i *Load) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 	if !i.success {
-		return 0
+		return 0, 0
 	}
 	l1d := x.Core().DataCache()
 	if l1d.IsBusy() {
@@ -63,12 +63,12 @@ func (i *Load) Format(x flamego.Context, a uint64) uint64 {
 			buffer[i] = l1d.Bus().Read(i)
 		}
 		l1d.Free() // Free Cache
-		return binary.BigEndian.Uint64(buffer)
+		return binary.BigEndian.Uint64(buffer), 0
 	}
-	return 0
+	return 0, 0
 }
 
-func (i *Load) Store(x flamego.Context, a uint64) {
+func (i *Load) Store(x flamego.Context, a, b uint64) {
 	if !i.success {
 		return
 	}

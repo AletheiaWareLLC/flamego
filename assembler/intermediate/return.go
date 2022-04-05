@@ -11,15 +11,13 @@ var _ Emittable = (*Return)(nil)
 
 type Return struct {
 	Statement
-	register flamego.Register
 }
 
-func NewReturn(r flamego.Register, c string) *Return {
+func NewReturn(c string) *Return {
 	return &Return{
 		Statement: Statement{
 			comment: c,
 		},
-		register: r,
 	}
 }
 
@@ -38,5 +36,5 @@ func (a *Return) EmittedSize() uint32 {
 }
 
 func (a *Return) Instruction() flamego.Instruction {
-	return isa.NewReturn(a.register)
+	return isa.NewReturn()
 }

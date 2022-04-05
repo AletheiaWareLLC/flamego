@@ -88,8 +88,8 @@ func TestEncoding(t *testing.T) {
 			assert.Equal(t, "00000010000000000000000000011111", fmt.Sprintf("%032b", opcode))
 		})
 		t.Run("Return", func(t *testing.T) {
-			opcode := isa.Encode(isa.NewReturn(flamego.R31))
-			assert.Equal(t, "00000011000000000000000000011111", fmt.Sprintf("%032b", opcode))
+			opcode := isa.Encode(isa.NewReturn())
+			assert.Equal(t, "00000011000000000000000000000000", fmt.Sprintf("%032b", opcode))
 		})
 	})
 	t.Run("DataMovement", func(t *testing.T) {
@@ -114,12 +114,12 @@ func TestEncoding(t *testing.T) {
 			assert.Equal(t, "00111000000000000101101111000000", fmt.Sprintf("%032b", opcode))
 		})
 		t.Run("Push", func(t *testing.T) {
-			opcode := isa.Encode(isa.NewPush(flamego.R31))
-			assert.Equal(t, "00000100000000000000000000011111", fmt.Sprintf("%032b", opcode))
+			opcode := isa.Encode(isa.NewPush(0b11101))
+			assert.Equal(t, "00000100000000000000000000011101", fmt.Sprintf("%032b", opcode))
 		})
 		t.Run("Pop", func(t *testing.T) {
-			opcode := isa.Encode(isa.NewPop(flamego.R31))
-			assert.Equal(t, "00000110000000000000000000011111", fmt.Sprintf("%032b", opcode))
+			opcode := isa.Encode(isa.NewPop(0b11101))
+			assert.Equal(t, "00000110000000000000000000011101", fmt.Sprintf("%032b", opcode))
 		})
 	})
 	t.Run("Bitwise", func(t *testing.T) {
@@ -321,11 +321,10 @@ func TestDecoding(t *testing.T) {
 			assert.Equal(t, flamego.R31, inst.AddressRegister)
 		})
 		t.Run("Return", func(t *testing.T) {
-			opcode, err := strconv.ParseUint("00000011000000000000000000011111", 2, 32)
+			opcode, err := strconv.ParseUint("00000011000000000000000000000000", 2, 32)
 			assert.NoError(t, err)
-			inst, ok := isa.Decode(uint32(opcode)).(*isa.Return)
+			_, ok := isa.Decode(uint32(opcode)).(*isa.Return)
 			assert.True(t, ok)
-			assert.Equal(t, flamego.R31, inst.AddressRegister)
 		})
 	})
 	t.Run("DataMovement", func(t *testing.T) {
@@ -372,18 +371,18 @@ func TestDecoding(t *testing.T) {
 			assert.Equal(t, uint32(22), inst.Offset)
 		})
 		t.Run("Push", func(t *testing.T) {
-			opcode, err := strconv.ParseUint("00000100000000000000000000011111", 2, 32)
+			opcode, err := strconv.ParseUint("00000100000000000000000000011101", 2, 32)
 			assert.NoError(t, err)
 			inst, ok := isa.Decode(uint32(opcode)).(*isa.Push)
 			assert.True(t, ok)
-			assert.Equal(t, flamego.R31, inst.SourceRegister)
+			assert.Equal(t, uint16(0b11101), inst.Mask)
 		})
 		t.Run("Pop", func(t *testing.T) {
-			opcode, err := strconv.ParseUint("00000110000000000000000000011111", 2, 32)
+			opcode, err := strconv.ParseUint("00000110000000000000000000011101", 2, 32)
 			assert.NoError(t, err)
 			inst, ok := isa.Decode(uint32(opcode)).(*isa.Pop)
 			assert.True(t, ok)
-			assert.Equal(t, flamego.R31, inst.DestinationRegister)
+			assert.Equal(t, uint16(0b11101), inst.Mask)
 		})
 	})
 	t.Run("Bitwise", func(t *testing.T) {

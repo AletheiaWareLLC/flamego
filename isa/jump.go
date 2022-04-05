@@ -58,15 +58,15 @@ func NewJump(cc JumpConditionCode, d JumpDirection, o uint32, r flamego.Register
 	}
 }
 
-func (i *Jump) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *Jump) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	// Load Program Counter
 	a := x.ReadRegister(flamego.RProgramCounter)
 	// Load Condition Registers
 	b := x.ReadRegister(i.ConditionRegister)
-	return a, b, 0
+	return a, b, 0, 0
 }
 
-func (i *Jump) Execute(x flamego.Context, a, b, c uint64) uint64 {
+func (i *Jump) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 	jump := false
 	switch i.ConditionCode {
 	case JumpEZ:
@@ -82,20 +82,20 @@ func (i *Jump) Execute(x flamego.Context, a, b, c uint64) uint64 {
 		offset := uint64(i.Offset)
 		switch i.Direction {
 		case JumpForward:
-			return a + offset
+			return a + offset, 0
 		case JumpBackward:
-			return a - offset
+			return a - offset, 0
 		}
 	}
-	return a + flamego.InstructionSize
+	return a + flamego.InstructionSize, 0
 }
 
-func (i *Jump) Format(x flamego.Context, a uint64) uint64 {
+func (i *Jump) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 	// Pass Through
-	return a
+	return a, 0
 }
 
-func (i *Jump) Store(x flamego.Context, a uint64) {
+func (i *Jump) Store(x flamego.Context, a, b uint64) {
 	// Update Program Counter
 	x.SetProgramCounter(a)
 }

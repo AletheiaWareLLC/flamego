@@ -7,8 +7,9 @@ Jump:                   01CCBOOO OOOOOOOO OOOOOOOO OOORRRRR
 Load/Store:             001TTOOO OOOOOOOO OOOOOOAA AAARRRRR
 Bitwise & Arithmetic:   0001TTTT -------- -2222211 111DDDDD
 Reserved:               00001--- -------- -------- --------
-Push/Pop:               000001T- -------- -------- ---RRRRR
-Call/Return:            0000001T -------- -------- ---AAAAA
+Push/Pop:               000001T- -------- MMMMMMMM MMMMMMMM
+Call:                   00000010 -------- -------- ---AAAAA
+Return:                 00000011 -------- -------- --------
 Special:                00000001 TTTT---- -------- --------
 
 ## Bitwise
@@ -184,25 +185,28 @@ Opcode: 00000010 -------- -------- ---AAAAA
 A: address register
 
 ```
+stack[stackpointer] = programcounter + instructionsize
+stackpointer += datasize
 programcounter = register[address]
 ```
 
-If the context is currently interrupted, RProgramCounter will be set to the contents of address register.
-If the context is not current interrupted, RProgramCounter will be set to sum of the contents of address register and RProgramStart. An InterruptProgramAccessError will be triggered if this sum exceeds RProgramLimit.
+Pushes the address of the next instruction (sum of RProgramCounter and InstructionSize) onto the stack.
+
+Sets RProgramCounter to the contents of address register.
 
 ### Return
 
-Assembly: return addressregister
-Opcode: 00000011 -------- -------- ---AAAAA
-
-A: address register
+Assembly: return
+Opcode: 00000011 -------- -------- --------
 
 ```
-programcounter = register[address]
+stackpointer -= datasize
+programcounter = stack[stackpointer]
 ```
 
-If the context is currently interrupted, RProgramCounter will be set to the contents of address register.
-If the context is not current interrupted, RProgramCounter will be set to sum of the contents of address register and RProgramStart. An InterruptProgramAccessError will be triggered if this sum exceeds RProgramLimit.
+Pops the return address off the stack.
+
+Sets RProgramCounter to the return address.
 
 ## Data Movement
 
@@ -287,11 +291,13 @@ Retryable if L1 Data, or L2 Cache is unavailable or unsuccessful (cache miss).
 ### Push
 
 Assembly: push register
-Opcode: 0000010- -------- -------- ---RRRRR
+Opcode: 0000010- -------- MMMMMMMM MMMMMMMM
 
-R: register
+M: register mask
 
-Pushes the given register onto stack
+Pushes the given registers onto stack.
+
+Retryable while each register in mask is pushed.
 
 Retryable if L1 Data Cache is unavailable or unsuccessful (cache miss).
 
@@ -300,11 +306,13 @@ Triggers InterruptStackOverflowError if RStackPointer > RStackLimit.
 ### Pop
 
 Assembly: pop register
-Opcode: 0000011- -------- -------- ---RRRRR
+Opcode: 0000011- -------- MMMMMMMM MMMMMMMM
 
-R: register
+M: register mask
 
-Pops the given register from stack
+Pops the given registers from stack.
+
+Retryable while each register in mask is popped.
 
 Retryable if L1 Data Cache is unavailable or unsuccessful (cache miss).
 

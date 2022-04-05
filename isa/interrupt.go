@@ -15,22 +15,22 @@ func NewInterrupt(value flamego.InterruptValue) *Interrupt {
 	}
 }
 
-func (i *Interrupt) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *Interrupt) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	// Load Interrupt Vector Table
-	return x.ReadRegister(flamego.RInterruptVectorTable), uint64(i.Value), 0
+	return x.ReadRegister(flamego.RInterruptVectorTable), uint64(i.Value), 0, 0
 }
 
-func (i *Interrupt) Execute(x flamego.Context, a, b, c uint64) uint64 {
+func (i *Interrupt) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 	// Calculate address of Interrupt Service Routine by add interrupt value to Interrupt Vector Table
-	return a + b
+	return a + b, 0
 }
 
-func (i *Interrupt) Format(x flamego.Context, a uint64) uint64 {
+func (i *Interrupt) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 	// Do Nothing
-	return a
+	return a, 0
 }
 
-func (i *Interrupt) Store(x flamego.Context, a uint64) {
+func (i *Interrupt) Store(x flamego.Context, a, b uint64) {
 	// Jump to Interrupt Service Routine by updating the Program Counter
 	x.SetProgramCounter(a)
 }

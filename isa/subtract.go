@@ -19,23 +19,23 @@ func NewSubtract(s1, s2, d flamego.Register) *Subtract {
 	}
 }
 
-func (i *Subtract) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *Subtract) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	// Load Source 1 Register
 	a := x.ReadRegister(i.Source1Register)
 	// Load Source 2 Register
 	b := x.ReadRegister(i.Source2Register)
-	return a, b, 0
+	return a, b, 0, 0
 }
 
-func (i *Subtract) Execute(x flamego.Context, a, b, c uint64) uint64 {
-	return a - b
+func (i *Subtract) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
+	return a - b, 0
 }
 
-func (i *Subtract) Format(x flamego.Context, a uint64) uint64 {
-	return a
+func (i *Subtract) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
+	return a, 0
 }
 
-func (i *Subtract) Store(x flamego.Context, a uint64) {
+func (i *Subtract) Store(x flamego.Context, a, b uint64) {
 	// Write Destination Register
 	x.WriteRegister(i.DestinationRegister, a)
 }

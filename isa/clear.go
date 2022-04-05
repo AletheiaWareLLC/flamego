@@ -24,22 +24,22 @@ func NewClear(a flamego.Register, o uint32) *Clear {
 	}
 }
 
-func (i *Clear) Load(x flamego.Context) (uint64, uint64, uint64) {
+func (i *Clear) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 	i.success = true
 	// Load Base Register
 	a := x.ReadRegister(i.AddressRegister)
 	// Load Offset
 	b := uint64(i.Offset)
-	return a, b, 0
+	return a, b, 0, 0
 }
 
-func (i *Clear) Execute(x flamego.Context, a, b, c uint64) uint64 {
+func (i *Clear) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 	address := a + b
 	if !i.issuedL1I {
 		l1i := x.Core().InstructionCache()
 		if l1i.IsBusy() || !l1i.IsFree() {
 			i.success = false // Cache Unavailable
-			return 0
+			return 0, 0
 		}
 
 		// Issue Clear Request
@@ -49,7 +49,7 @@ func (i *Clear) Execute(x flamego.Context, a, b, c uint64) uint64 {
 		l1d := x.Core().DataCache()
 		if l1d.IsBusy() || !l1d.IsFree() {
 			i.success = false // Cache Unavailable
-			return 0
+			return 0, 0
 		}
 
 		// Issue Clear Request
@@ -59,19 +59,19 @@ func (i *Clear) Execute(x flamego.Context, a, b, c uint64) uint64 {
 		l2 := x.Core().Processor().Cache()
 		if l2.IsBusy() || !l2.IsFree() {
 			i.success = false // Cache Unavailable
-			return 0
+			return 0, 0
 		}
 
 		// Issue Clear Request
 		l2.Clear(address)
 		i.issuedL2 = true
 	}
-	return 0
+	return 0, 0
 }
 
-func (i *Clear) Format(x flamego.Context, a uint64) uint64 {
+func (i *Clear) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 	if !i.success {
-		return 0
+		return 0, 0
 	}
 	if !i.clearedL1I {
 		l1i := x.Core().InstructionCache()
@@ -110,10 +110,10 @@ func (i *Clear) Format(x flamego.Context, a uint64) uint64 {
 			l2.Free() // Free Cache
 		}
 	}
-	return 0
+	return 0, 0
 }
 
-func (i *Clear) Store(x flamego.Context, a uint64) {
+func (i *Clear) Store(x flamego.Context, a, b uint64) {
 	// Do Nothing
 }
 

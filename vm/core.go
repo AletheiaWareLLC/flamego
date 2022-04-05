@@ -26,11 +26,14 @@ type Core struct {
 	requiresLock bool
 	acquiredLock bool
 
-	loadRegister0   uint64
-	loadRegister1   uint64
-	loadRegister2   uint64
-	executeRegister uint64
-	formatRegister  uint64
+	loadRegister0    uint64
+	loadRegister1    uint64
+	loadRegister2    uint64
+	loadRegister3    uint64
+	executeRegister0 uint64
+	executeRegister1 uint64
+	formatRegister0  uint64
+	formatRegister1  uint64
 }
 
 func (c *Core) Id() int {
@@ -90,12 +93,24 @@ func (c *Core) LoadRegister2() uint64 {
 	return c.loadRegister2
 }
 
-func (c *Core) ExecuteRegister() uint64 {
-	return c.executeRegister
+func (c *Core) LoadRegister3() uint64 {
+	return c.loadRegister3
 }
 
-func (c *Core) FormatRegister() uint64 {
-	return c.formatRegister
+func (c *Core) ExecuteRegister0() uint64 {
+	return c.executeRegister0
+}
+
+func (c *Core) ExecuteRegister1() uint64 {
+	return c.executeRegister1
+}
+
+func (c *Core) FormatRegister0() uint64 {
+	return c.formatRegister0
+}
+
+func (c *Core) FormatRegister1() uint64 {
+	return c.formatRegister1
 }
 
 func (c *Core) Clock(cycle int) {
@@ -105,10 +120,10 @@ func (c *Core) Clock(cycle int) {
 
 	// Run the pipeline in reverse so data flow in intermediate registers are not affected.
 	c.context(7).RetireInstruction()
-	c.context(6).StoreData(c.formatRegister)
-	c.formatRegister = c.context(5).FormatData(c.executeRegister)
-	c.executeRegister = c.context(4).ExecuteOperation(c.loadRegister0, c.loadRegister1, c.loadRegister2)
-	c.loadRegister0, c.loadRegister1, c.loadRegister2 = c.context(3).LoadData()
+	c.context(6).StoreData(c.formatRegister0, c.formatRegister1)
+	c.formatRegister0, c.formatRegister1 = c.context(5).FormatData(c.executeRegister0, c.executeRegister1)
+	c.executeRegister0, c.executeRegister1 = c.context(4).ExecuteOperation(c.loadRegister0, c.loadRegister1, c.loadRegister2, c.loadRegister3)
+	c.loadRegister0, c.loadRegister1, c.loadRegister2, c.loadRegister3 = c.context(3).LoadData()
 	c.context(2).DecodeInstruction()
 	c.context(1).LoadInstruction()
 	c.context(0).FetchInstruction()
