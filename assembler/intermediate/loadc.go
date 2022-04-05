@@ -4,6 +4,7 @@ import (
 	"aletheiaware.com/flamego"
 	"aletheiaware.com/flamego/isa"
 	"encoding/binary"
+	"log"
 )
 
 var _ Addressable = (*LoadC)(nil)
@@ -86,6 +87,11 @@ func (a *LoadC) Instruction() flamego.Instruction {
 		a.number = uint32(a.label.AbsoluteAddress())
 	} else if a.constant != nil {
 		a.number = uint32(a.constant.Value())
+	}
+	// Ensure a.number doesn't overflow available bits
+	limit := uint32(1) << 26
+	if a.number >= limit {
+		log.Println("Warning: Load Constant Overflow:", a.number)
 	}
 	return isa.NewLoadC(a.number, a.register)
 }
