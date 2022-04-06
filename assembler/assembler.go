@@ -95,6 +95,11 @@ func (a *assembler) WriteTo(writer io.Writer) (int64, error) {
 			address += e.EmittedSize()
 		}
 	}
+	for _, c := range a.constants {
+		if err := c.Link(a); err != nil {
+			return 0, err
+		}
+	}
 	for _, s := range a.statements {
 		if l, ok := s.(intermediate.Linkable); ok {
 			if err := l.Link(a); err != nil {
