@@ -39,9 +39,9 @@ const (
 
 const (
 	DeviceOffsetCommand uint32 = iota
-	DeviceOffsetParameter
 	DeviceOffsetDeviceAddress
 	DeviceOffsetMemoryAddress
+	DeviceOffsetParameter
 )
 
 type Device interface {

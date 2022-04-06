@@ -26,9 +26,9 @@ type Device struct {
 	operation       flamego.DeviceOperation
 	command         uint64
 	controller      int
-	parameter       uint64
 	deviceAddress   uint64
 	memoryAddress   uint64
+	parameter       uint64
 	OnMemoryRead    func() error
 	OnMemoryWrite   func() error
 	OnSignal        func(int)
@@ -62,16 +62,16 @@ func (d *Device) Controller() int {
 	return d.controller
 }
 
-func (d *Device) Parameter() uint64 {
-	return d.parameter
-}
-
 func (d *Device) DeviceAddress() uint64 {
 	return d.deviceAddress
 }
 
 func (d *Device) MemoryAddress() uint64 {
 	return d.memoryAddress
+}
+
+func (d *Device) Parameter() uint64 {
+	return d.parameter
 }
 
 func (d *Device) SetOnSignal(s func(int)) {
@@ -102,8 +102,10 @@ func (d *Device) Clock(cycle int) {
 			d.memory.Free()
 		case flamego.MemoryRead:
 			if d.memory.IsSuccessful() {
-				if err := d.OnMemoryRead(); err != nil {
-					panic(err)
+				if f := d.OnMemoryRead; f != nil {
+					if err := f(); err != nil {
+						panic(err)
+					}
 				}
 			} else {
 				panic("Not Yet Implemented")
@@ -111,8 +113,10 @@ func (d *Device) Clock(cycle int) {
 			d.memory.Free()
 		case flamego.MemoryWrite:
 			if d.memory.IsSuccessful() {
-				if err := d.OnMemoryWrite(); err != nil {
-					panic(err)
+				if f := d.OnMemoryWrite; f != nil {
+					if err := f(); err != nil {
+						panic(err)
+					}
 				}
 			} else {
 				panic("Not Yet Implemented")
@@ -149,16 +153,16 @@ func (d *Device) LoadControlBlock() {
 }
 
 func (d *Device) CopyControlBlock() {
-	// Copy command, parameter, deviceaddress, and memoryaddress from memory bus
+	// Copy command, deviceaddress, memoryaddress, and parameter from memory bus
 	mb := d.memory.Bus()
 	buffer := make([]byte, flamego.DeviceControlBlockSize)
 	for i := 0; i < flamego.DeviceControlBlockSize; i++ {
 		buffer[i] = mb.Read(i)
 	}
 	d.command = binary.BigEndian.Uint64(buffer[0:8])
-	d.parameter = binary.BigEndian.Uint64(buffer[8:16])
-	d.deviceAddress = binary.BigEndian.Uint64(buffer[16:24])
-	d.memoryAddress = binary.BigEndian.Uint64(buffer[24:32])
+	d.deviceAddress = binary.BigEndian.Uint64(buffer[8:16])
+	d.memoryAddress = binary.BigEndian.Uint64(buffer[16:24])
+	d.parameter = binary.BigEndian.Uint64(buffer[24:32])
 
 	// Split command into controller and operation
 	d.controller = int((d.command >> 32) & 0xffffffff)
@@ -166,9 +170,9 @@ func (d *Device) CopyControlBlock() {
 	log.Println("Loaded Control Block")
 	log.Println("Controller:", d.controller)
 	log.Println("Operation:", d.operation)
-	log.Println("Parameter:", d.parameter)
 	log.Println("Device Address:", d.deviceAddress)
 	log.Println("Memory Address:", d.memoryAddress)
+	log.Println("Parameter:", d.parameter)
 }
 
 func (d *Device) SignalController() {

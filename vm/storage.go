@@ -3,6 +3,7 @@ package vm
 import (
 	"aletheiaware.com/flamego"
 	"fmt"
+	"log"
 	"os"
 )
 
@@ -47,14 +48,21 @@ func (s *FileStorage) Close() error {
 
 func (s *FileStorage) Status() error {
 	// TODO write to memory
-	// Command<-Manufacturer
-	// Parameter<-Serial Number/Product ID/Hardware & Software Versions
-	// DeviceAddress<-Current State
-	// MemoryAddress
+	// MemoryAddress[0]<-Manufacturer
+	// MemoryAddress[1]<-Current State
+	// MemoryAddress[2]<-Serial Number/Product ID
+	// MemoryAddress[3]<-Hardware Version
+	// MemoryAddress[4]<-Software Version
+	// MemoryAddress[5]<-Storage Size/Capacity
+	// MemoryAddress[6]
+	// MemoryAddress[7]
 	return nil
 }
 
 func (s *FileStorage) Enable() error {
+	if s.file == nil {
+		log.Println("Warning: Storage enabled without file being open")
+	}
 	s.isBusy = false
 	s.operation = flamego.DeviceNone
 	s.SignalController()
@@ -82,9 +90,11 @@ func (s *FileStorage) Read() error {
 			limit = s
 		}
 		buffer := make([]byte, limit)
-		if count, err := s.file.Read(buffer); err != nil {
+		count, err := s.file.Read(buffer)
+		if err != nil {
 			return err
-		} else if uint64(count) != limit {
+		}
+		if uint64(count) != limit {
 			return fmt.Errorf("Expected to read %d bytes from file, actually read %d", limit, count)
 		}
 		for i, b := range buffer {
@@ -92,15 +102,15 @@ func (s *FileStorage) Read() error {
 		}
 		s.memoryOperation = flamego.MemoryWrite
 		s.memory.Write(s.memoryAddress)
-		// TODO
-		// if s.parameter > limit {
-		//   s.parameter-=limit
-		//   s.deviceAddress+=limit
-		//   s.memoryAddress+=limit
-		// } else {
-		s.isBusy = false
-		s.operation = flamego.DeviceNone
-		// }
+		if s.parameter > limit {
+			s.deviceAddress += limit
+			s.memoryAddress += limit
+			s.parameter -= limit
+		} else {
+			s.isBusy = false
+			s.operation = flamego.DeviceNone
+			s.SignalController()
+		}
 	}
 	return nil
 }

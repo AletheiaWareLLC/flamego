@@ -36,10 +36,14 @@ func (d *Display) Image() image.Image {
 
 func (d *Display) Status() error {
 	// TODO write to memory
-	// Command<-Manufacturer
-	// Parameter<-Serial Number/Product ID/Hardware & Software Versions
-	// DeviceAddress<-Current State
-	// MemoryAddress
+	// MemoryAddress[0]<-Manufacturer
+	// MemoryAddress[1]<-Current State
+	// MemoryAddress[2]<-Serial Number/Product ID
+	// MemoryAddress[3]<-Hardware Version
+	// MemoryAddress[4]<-Software Version
+	// MemoryAddress[5]<-Size ((32bit Width << 32) | 32bit Height)
+	// MemoryAddress[6]
+	// MemoryAddress[7]
 	return nil
 }
 
