@@ -235,7 +235,7 @@ func (c *Cache) Clock(cycle int) {
 				// Copy values into bus
 				a := int(offset)
 				for i := 0; i < c.busWidth && a < c.lineWidth; i, a = i+1, a+1 {
-					if line.IsValid(i) {
+					if line.IsValid(a) {
 						c.bus.Write(i, line.Read(a))
 					} else {
 						c.bus.SetValid(i, false)
