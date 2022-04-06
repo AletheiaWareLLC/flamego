@@ -69,13 +69,6 @@ func (p *Processor) Signal(device int) {
 }
 
 func (p *Processor) Clock(cycle int) {
-	// IO Devices are 500 times slower
-	if cycle%500 == 0 {
-		for _, d := range p.devices {
-			d.Clock(cycle / 500)
-		}
-	}
-
 	// Main Memory is 100 times slower
 	if cycle%100 == 0 {
 		p.memory.Clock(cycle / 100)
@@ -89,6 +82,13 @@ func (p *Processor) Clock(cycle int) {
 	// Clock Each Core
 	for _, c := range p.cores {
 		c.Clock(cycle)
+	}
+
+	// IO Devices are 500 times slower
+	if cycle%500 == 0 {
+		for _, d := range p.devices {
+			d.Clock(cycle / 500)
+		}
 	}
 
 	// Update Hardware Lock
