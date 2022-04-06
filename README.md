@@ -1,7 +1,7 @@
 Flame
 =====
 
-A full computing stack
+Computing from Scratch
 
 ## Virtual Machine
 
@@ -15,10 +15,18 @@ Converts plain text assembly into machine code.
 
 Initializes machine and loads operating system from storage
 
-## Operating System
+## Kernel
 
 Manages computer resources.
 
+- Communication Manager
 - Process Manager
 - Memory Manager
 - IO Manager
+
+## Operating System
+
+- Device Drivers
+- Utilities
+- Shell/Terminal
+- User Interface/Experience
