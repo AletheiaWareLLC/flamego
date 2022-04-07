@@ -4,6 +4,7 @@ import (
 	"aletheiaware.com/flamego"
 	"aletheiaware.com/flamego/vm"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 )
@@ -14,6 +15,10 @@ var (
 )
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s [options]\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 
 	machine := vm.NewMachine()

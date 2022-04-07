@@ -4,6 +4,7 @@ import (
 	"aletheiaware.com/flamego/assembler"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 )
@@ -15,11 +16,22 @@ var (
 )
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s [options] input\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.Parse()
+	args := flag.Args()
+
+	if len(args) == 0 {
+		fmt.Println("Missing input file")
+		flag.Usage()
+		return
+	}
 
 	a := assembler.NewAssembler()
 
-	for _, i := range flag.Args() {
+	for _, i := range args {
 		f, err := os.Open(i)
 		if err != nil {
 			log.Fatal(err)
@@ -29,7 +41,7 @@ func main() {
 		}
 	}
 
-	writer := os.Stdout
+	writer := io.Discard
 	if *output != "" {
 		f, err := os.Create(*output)
 		if err != nil {

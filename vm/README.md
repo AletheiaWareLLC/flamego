@@ -3,7 +3,7 @@
 ## Processor
 
 - 64bit RISC Architecture
-- Barrel Processor
+- Barrel Design
 - 8 Cores per Processor
 - 8 Contexts per Core
 - 8-Stage Pipeline

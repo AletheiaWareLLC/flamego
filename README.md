@@ -3,13 +3,17 @@ Flame
 
 Computing from Scratch
 
-## Virtual Machine
+## Instruction Set Architecture
 
-Simulates basic building blocks of hardware.
+Defines the operations and encoding formats.
 
 ## Assembler
 
 Converts plain text assembly into machine code.
+
+## Virtual Machine
+
+Simulates basic building blocks of hardware.
 
 ## Bootloader
 
@@ -29,4 +33,4 @@ Manages computer resources.
 - Device Drivers
 - Utilities
 - Shell/Terminal
-- User Interface/Experience
+- User Interface/User Experience

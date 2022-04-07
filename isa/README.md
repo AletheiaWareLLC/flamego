@@ -194,6 +194,44 @@ Pushes the address of the next instruction (sum of RProgramCounter and Instructi
 
 Sets RProgramCounter to the contents of address register.
 
+#### Calling Convention
+
+- Callers are responsible for saving all general purpose registers in use to the stack using 'push' before calling the function.
+- Callers are responsible for restoring all general purpose registers in use from the stack using 'pop' after the function returns.
+- Callers may pass parameters to the function using the general purpose registers (r16 is parameter 1, r17 is parameter 2, ..., r30 is parameter 15). If the number of parameters exceeds 15 they should be written to a region of memory and the address to which is passed as parameter 1 (r16).
+- Callers load the function address into a register (typically r31) and then call it (eg 'call r31'). The address of the instruction after the call will be pushed onto the stack.
+
+- Functions receive their parameters through the general purpose registers.
+- Functions may return values through the general purpose registers (r16 is return value 1, r17 is return value 2, ..., r30 is return value 15). If the number of return values exceeds 15 they should be written to a region of memory and the address to which is passed as return value 1 (r16).
+- Functions exit and return control flow to the caller using the 'return' instruction, which pops the return address off the stack and into the program counter register.
+
+Example
+```
+loadc 1 r16                         // A general purpose registers in use
+loadc 2 r17                         // A general purpose registers in use
+loadc 3 r18                         // A general purpose registers in use
+loadc 4 r19                         // A general purpose registers in use
+
+push r16,r17,r18,r19                // Caller saves all general purpose registers in use to the stack
+loadc 8 r16                         // Caller passes parameters using the general purpose registers
+loadc #Square r31                   // Caller loads function address
+call r31                            // Caller calls function
+copy r16 r20                        // Caller receives return value using the general purpose registers
+pop r19,r18,r17,r16                 // Caller restores all general purpose registers in use from the stack
+halt
+
+// Expected Register Value
+// - r16 1
+// - r17 2
+// - r18 3
+// - r19 4
+// - r20 64
+
+#Square                             // A function to return the square of the given parameter
+multiply r16 r16 r16                // Receive parameter from r16 and return value to r16
+return                              // Return control flow to caller
+```
+
 ### Return
 
 Assembly: return
