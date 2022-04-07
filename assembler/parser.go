@@ -98,6 +98,9 @@ func (p *parser) matchNumber() (uint64, error) {
 	if strings.HasPrefix(v, "0x") {
 		return strconv.ParseUint(strings.TrimPrefix(v, "0x"), 16, 64)
 	}
+	if strings.HasPrefix(v, "0b") {
+		return strconv.ParseUint(strings.TrimPrefix(v, "0b"), 2, 64)
+	}
 	return strconv.ParseUint(v, 10, 64)
 }
 
