@@ -85,8 +85,7 @@ func (i *Call) Store(x flamego.Context, a, b uint64) {
 }
 
 func (i *Call) Retire(x flamego.Context) bool {
-	// Do Nothing
-	return true
+	return i.success
 }
 
 func (i *Call) String() string {
