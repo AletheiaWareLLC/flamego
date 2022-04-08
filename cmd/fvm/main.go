@@ -34,7 +34,7 @@ func main() {
 	}
 
 	if *storage != "" {
-		s := vm.NewFileStorage(machine.Memory, flamego.DeviceControlBlockOffset)
+		s := vm.NewFileStorage(machine.Memory, flamego.DeviceControlBlockAddress)
 		if err := s.Open(*storage); err != nil {
 			log.Fatal(err)
 		}

@@ -33,8 +33,8 @@ func (o DeviceOperation) String() string {
 }
 
 const (
-	DeviceControlBlockOffset = 64
-	DeviceControlBlockSize   = 32
+	DeviceControlBlockAddress = 512
+	DeviceControlBlockSize    = 32
 )
 
 const (
