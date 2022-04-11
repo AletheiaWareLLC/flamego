@@ -295,10 +295,10 @@ data 0b10                   // Binary Literal
 data #Label                 // Label Address Literal
 ```
 
-# Padding
+# Allocate
 
-Padding inserts the given number of data statements into the output - eg 'padding 10' is equivalent to writting 'data 0' 10 times.
+Allocate inserts the given number of data statements into the output - eg 'allocate 10' is equivalent to writting 'data 0' 10 times.
 
 # Align
 
-Align is used to produce a variable padding such that the next statement is given the specified address - eg 'align 0x200' will ensure the next statement has address 0x200 (512).
+Align is used to produce a variable amount of padding such that the next statement is given the specified address - eg 'align 0x200' will ensure the next statement has address 0x200 (512).

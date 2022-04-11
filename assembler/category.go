@@ -14,7 +14,7 @@ const (
 	CategoryLowerName
 	CategoryNumber
 	CategoryAlign
-	CategoryPadding
+	CategoryAllocate
 	CategoryData
 	CategoryStatement
 	CategoryLabel
@@ -42,8 +42,10 @@ func (c Category) String() string {
 		return "LowerName"
 	case CategoryNumber:
 		return "Number"
-	case CategoryPadding:
-		return "Padding"
+	case CategoryAlign:
+		return "Align"
+	case CategoryAllocate:
+		return "Allocate"
 	case CategoryData:
 		return "Data"
 	case CategoryStatement:
