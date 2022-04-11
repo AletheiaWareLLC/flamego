@@ -34,14 +34,13 @@ func (o DeviceOperation) String() string {
 
 const (
 	DeviceControlBlockAddress = 512
-	DeviceControlBlockSize    = 32
+	DeviceControlBlockSize    = 24
 )
 
 const (
-	DeviceOffsetCommand uint32 = iota
+	DeviceOffsetCommand uint32 = iota // 8bit controller, 8bit operation, 48bit parameter
 	DeviceOffsetDeviceAddress
 	DeviceOffsetMemoryAddress
-	DeviceOffsetParameter
 )
 
 type Device interface {

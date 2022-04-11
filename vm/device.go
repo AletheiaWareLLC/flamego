@@ -7,7 +7,11 @@ import (
 	"log"
 )
 
-const ReadControlBlock = flamego.MemoryOperation(3)
+const (
+	ReadCommand       = flamego.MemoryOperation(3)
+	ReadDeviceAddress = flamego.MemoryOperation(4)
+	ReadMemoryAddress = flamego.MemoryOperation(5)
+)
 
 func NewDevice(m flamego.Memory, o uint64) *Device {
 	return &Device{
@@ -26,9 +30,9 @@ type Device struct {
 	operation       flamego.DeviceOperation
 	command         uint64
 	controller      int
+	parameter       uint64
 	deviceAddress   uint64
 	memoryAddress   uint64
-	parameter       uint64
 	OnMemoryRead    func() error
 	OnMemoryWrite   func() error
 	OnSignal        func(int)
@@ -62,16 +66,16 @@ func (d *Device) Controller() int {
 	return d.controller
 }
 
+func (d *Device) Parameter() uint64 {
+	return d.parameter
+}
+
 func (d *Device) DeviceAddress() uint64 {
 	return d.deviceAddress
 }
 
 func (d *Device) MemoryAddress() uint64 {
 	return d.memoryAddress
-}
-
-func (d *Device) Parameter() uint64 {
-	return d.parameter
 }
 
 func (d *Device) SetOnSignal(s func(int)) {
@@ -93,9 +97,25 @@ func (d *Device) Clock(cycle int) {
 		switch d.memoryOperation {
 		case flamego.MemoryNone:
 			// Do nothing
-		case ReadControlBlock:
+		case ReadCommand:
 			if d.memory.IsSuccessful() {
-				d.CopyControlBlock()
+				d.CopyCommand()
+				d.ReadDeviceAddress()
+			} else {
+				panic("Not Yet Implemented")
+			}
+			return
+		case ReadDeviceAddress:
+			if d.memory.IsSuccessful() {
+				d.CopyDeviceAddress()
+				d.ReadMemoryAddress()
+			} else {
+				panic("Not Yet Implemented")
+			}
+			return
+		case ReadMemoryAddress:
+			if d.memory.IsSuccessful() {
+				d.CopyMemoryAddress()
 			} else {
 				panic("Not Yet Implemented")
 			}
@@ -130,7 +150,9 @@ func (d *Device) Clock(cycle int) {
 	if d.isBusy {
 		switch d.operation {
 		case flamego.DeviceNone:
-			d.LoadControlBlock()
+			if !d.memory.IsBusy() && d.memory.IsFree() {
+				d.ReadCommand()
+			}
 		default:
 			f, ok := d.operations[d.operation]
 			if !ok {
@@ -143,36 +165,58 @@ func (d *Device) Clock(cycle int) {
 	}
 }
 
-func (d *Device) LoadControlBlock() {
-	// Read control block from memory
-	if !d.memory.IsBusy() && d.memory.IsFree() {
-		log.Println("Loading Control Block")
-		d.memoryOperation = ReadControlBlock
-		d.memory.Read(d.memoryOffset)
-	}
+func (d *Device) ReadCommand() {
+	// Read command from memory
+	log.Println("Loading Command")
+	d.memoryOperation = ReadCommand
+	d.memory.Read(d.memoryOffset + flamego.DataSize*0)
 }
 
-func (d *Device) CopyControlBlock() {
-	// Copy command, deviceaddress, memoryaddress, and parameter from memory bus
-	mb := d.memory.Bus()
-	buffer := make([]byte, flamego.DeviceControlBlockSize)
-	for i := 0; i < flamego.DeviceControlBlockSize; i++ {
-		buffer[i] = mb.Read(i)
-	}
-	d.command = binary.BigEndian.Uint64(buffer[0:8])
-	d.deviceAddress = binary.BigEndian.Uint64(buffer[8:16])
-	d.memoryAddress = binary.BigEndian.Uint64(buffer[16:24])
-	d.parameter = binary.BigEndian.Uint64(buffer[24:32])
+func (d *Device) ReadDeviceAddress() {
+	// Read device address from memory
+	log.Println("Loading Device Address")
+	d.memoryOperation = ReadDeviceAddress
+	d.memory.Read(d.memoryOffset + flamego.DataSize*1)
+}
 
+func (d *Device) ReadMemoryAddress() {
+	// Read memory address from memory
+	log.Println("Loading Memory Address")
+	d.memoryOperation = ReadMemoryAddress
+	d.memory.Read(d.memoryOffset + flamego.DataSize*2)
+}
+
+func (d *Device) CopyCommand() {
+	// Copy command from memory bus
+	d.command = d.CopyData()
 	// Split command into controller and operation
-	d.controller = int((d.command >> 32) & 0xffffffff)
-	d.operation = flamego.DeviceOperation(d.command & 0xffffffff)
-	log.Println("Loaded Control Block")
+	d.controller = int((d.command >> 56) & 0xff)
+	d.operation = flamego.DeviceOperation((d.command >> 48) & 0xff)
+	d.parameter = d.command & 0xffffffffffff
 	log.Println("Controller:", d.controller)
 	log.Println("Operation:", d.operation)
-	log.Println("Device Address:", d.deviceAddress)
-	log.Println("Memory Address:", d.memoryAddress)
 	log.Println("Parameter:", d.parameter)
+}
+
+func (d *Device) CopyDeviceAddress() {
+	// Copy device address from memory bus
+	d.deviceAddress = d.CopyData()
+	log.Println("Device Address:", d.deviceAddress)
+}
+
+func (d *Device) CopyMemoryAddress() {
+	// Copy memory address from memory bus
+	d.memoryAddress = d.CopyData()
+	log.Println("Memory Address:", d.memoryAddress)
+}
+
+func (d *Device) CopyData() uint64 {
+	mb := d.memory.Bus()
+	buffer := make([]byte, flamego.DataSize)
+	for i := 0; i < flamego.DataSize; i++ {
+		buffer[i] = mb.Read(i)
+	}
+	return binary.BigEndian.Uint64(buffer[:])
 }
 
 func (d *Device) SignalController() {
