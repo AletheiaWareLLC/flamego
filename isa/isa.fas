@@ -1,0 +1,43 @@
+// Instruction Set Architecture
+
+#Bitwise
+not r1 r16
+and r1 r1 r16
+or r1 r1 r16
+xor r1 r1 r16
+leftshift r1 r1 r16
+rightshift r1 r1 r16
+
+#Arithmetic
+add r1 r1 r16
+subtract r1 r1 r16
+multiply r1 r1 r16
+divide r1 r1 r16
+modulo r1 r1 r16
+
+#ControlFlow
+jez r1 #ControlFlow
+jnz r0 #ControlFlow
+jle r1 #ControlFlow
+jlz r0 #ControlFlow
+call r6
+return r6
+
+#DataMovement
+loadc #DataMovement r16
+load r16 0 r17
+store r16 0 r17
+clear r16 0
+flush r16 0
+push r16
+pop r16
+
+#Special
+halt
+noop
+sleep
+signal r1
+lock
+unlock
+interrupt 1
+uninterrupt r16
