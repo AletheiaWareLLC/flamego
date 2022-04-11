@@ -1,0 +1,125 @@
+FRAMEWIDTH 320
+FRAMEHEIGHT 240
+FRAMESIZE 307200                                // 320 * 240 * 4 BytesPerPixel
+
+DISPLAY 65                                      // 0-63 Processor (8 Cores * 8 Contexts), 64 Storage, 65 Display
+COMMAND_SHIFT 48
+IOSTATUS 0x1
+IOENABLE 0x2
+IODISABLE 0x3
+// IOREAD 0x4
+IOWRITE 0x5
+PIXELBYTES 8                                    // Double pixel
+
+#EnableDisplay
+clear r0 #DisplayEnabled
+load r0 #DisplayEnabled r16                     // Was display already enabled?
+jnz r16 #FillFrame
+store r0 #DisplayEnabled r1
+flush r0 #DisplayEnabled
+loadc #DisplayControl r16                       // Load display address
+loadc IOENABLE r17                              // Load enable command
+loadc COMMAND_SHIFT r18                         // Load shift amount
+leftshift r17 r18 r17                           // Shift command
+store r16 0 r17                                 // Store enable command
+
+flush r16 0                                     // Flush enable command
+
+loadc DISPLAY r16                               // Load display id
+signal r16                                      // Signal display
+sleep                                           // Wait for display signal
+
+#FillFrame
+load r0 #FrameCount r16                         // Load frame count
+loadc 3 r17                                     // Load number of colors
+modulo r16 r17 r18                              // Calculate modulus
+jez r18 #FillRed
+subtract r18 r1 r18
+jez r18 #FillGreen
+
+#FillBlue
+load r0 #Blue r16                               // Load color
+jump #FillColor
+
+#FillGreen
+load r0 #Green r16                              // Load color
+jump #FillColor
+
+#FillRed
+load r0 #Red r16                                // Load color
+
+#FillColor
+loadc PIXELBYTES r17                            // Load bytes per pixel
+loadc FRAMESIZE r18                             // Load limit
+copy r0 r19                                     // Load counter
+#FillLoop
+store r19 #Frame r16                            // Write color
+subtract r18 r17 r18                            // Decrement limit
+jle r18 #FlushFrame
+add r19 r17 r19                                 // Increment counter
+jump #FillLoop
+
+#FlushFrame
+loadc PIXELBYTES r17                            // Load bytes per pixel
+loadc FRAMESIZE r18                             // Load limit
+copy r0 r19                                     // Load counter
+#FlushLoop
+flush r19 #Frame                                // Flush frame
+subtract r18 r17 r18                            // Decrement limit
+jle r18 #DrawFrame
+add r19 r17 r19                                 // Increment counter
+jump #FlushLoop
+
+#DrawFrame
+load r0 #FrameCount r16                         // Load previous frame count
+add r16 r1 r16                                  // Increment frame count
+store r0 #FrameCount r16                        // Store new frame count
+flush r0 #FrameCount
+
+#SwapFrame
+loadc #DisplayControl r16                       // Load display address
+loadc IOWRITE r17                               // Load write command
+loadc COMMAND_SHIFT r18                         // Load shift amount
+leftshift r17 r18 r17                           // Shift command
+loadc FRAMESIZE r18                             // Load frame size
+or r17 r18 r17                                  // Add parameter to command
+store r16 0 r17                                 // Store write command
+store r16 8 r0                                  // Store device address
+loadc #Frame r17                                // Load memory address
+store r16 16 r17                                // Store memory address
+
+flush r16 0                                     // Flush write command
+flush r16 8                                     // Flush device address
+flush r16 16                                    // Flush memory address
+
+loadc DISPLAY r16                               // Load display id
+signal r16                                      // Signal display
+sleep                                           // Wait for display signal
+
+align 0x200                                     // Align to IO Control Blocks
+
+align 0x218                                     // Align to Display Control Block (device after storage)
+
+#DisplayControl
+data 0                                          // Command (8bit Controller, 8bit Operation, 48bit Parameter)
+data 0                                          // Device Address
+data 0                                          // Memory Address
+
+align 0x300                                     // Align to new Cache Line
+
+#DisplayEnabled
+data 0
+#DisplaySplashed
+data 0
+
+#Red
+data 0xFF0000FFFF0000FF                         // Double pixel
+#Green
+data 0x00FF00FF00FF00FF                         // Double pixel
+#Blue
+data 0x0000FFFF0000FFFF                         // Double pixel
+
+#FrameCount
+data 0
+
+#Frame

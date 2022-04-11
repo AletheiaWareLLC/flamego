@@ -1,0 +1,7 @@
+loadc 10 r16
+#loop
+subtract r16 r1 r16
+jle r16 #end // Break out of loop if r16 is zero
+jump #loop // Loop
+#end
+halt

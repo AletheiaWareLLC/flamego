@@ -1,0 +1,4 @@
+loadc 17 r16
+loadc 33 r17
+add r16 r17 r18
+halt

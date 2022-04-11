@@ -1,0 +1,25 @@
+store r0 #test r1
+flush r0 #test
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+noop
+halt
+
+#test
+data 0

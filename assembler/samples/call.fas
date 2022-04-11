@@ -1,0 +1,29 @@
+loadc #StackStart rSP
+loadc #StackStart rSS
+loadc #StackLimit rSL
+loadc 1 r16
+loadc 2 r17
+loadc 3 r18
+loadc 4 r19
+push r16,r17,r18,r19
+loadc 2 r16
+loadc #Square r17
+call r17
+pop r20,r19,r18,r17
+halt
+
+// Expected Register Value
+// - r16 4
+// - r17 1
+// - r18 2
+// - r19 3
+// - r20 4
+
+#Square
+multiply r16 r16 r16
+return
+
+align 0x40 // Align stack to 64bit boundary
+#StackStart
+allocate 10 // Stack of 10 64bit values
+#StackLimit
