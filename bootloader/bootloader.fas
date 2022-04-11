@@ -1,0 +1,170 @@
+jump #Boot                                      // Jump to Bootloader
+
+align 0x80                                      // Align IVT to 128byte boundary
+
+#InterruptVectorTable
+jump #InterruptSignal
+jump #InterruptBreakpoint
+jump #InterruptUnsupportedOperationError
+jump #InterruptArithmeticError
+jump #InterruptRegisterAccessError
+jump #InterruptMemoryAccessError
+jump #InterruptProgramAccessError
+jump #InterruptStackOverflowError
+jump #InterruptStackUnderflowError
+
+#InterruptSignal
+return                                          // Return to Bootloader
+
+#InterruptBreakpoint
+halt
+
+#InterruptUnsupportedOperationError
+halt
+
+#InterruptArithmeticError
+halt
+
+#InterruptRegisterAccessError
+halt
+
+#InterruptMemoryAccessError
+halt
+
+#InterruptProgramAccessError
+halt
+
+#InterruptStackOverflowError
+halt
+
+#InterruptStackUnderflowError
+halt
+
+align 0x100                                     // Align stack to 256byte boundary
+#StackStart
+allocate 10                                     // Tiny stack of only 1 64bit value, just to save the return address when doing IO operations
+#StackLimit
+
+#MagicNumber
+data 0x123456789abcdef                          // Magic Number
+
+#BootedFlag
+data 0
+
+align 0x200                                     // Align to IO Control Blocks
+
+#Storage
+data 0                                          // Command (8bit Controller, 8bit Operation, 48bit Parameter)
+data 0                                          // Device Address
+data 0                                          // Memory Address
+#Display
+data 0                                          // Command (8bit Controller, 8bit Operation, 48bit Parameter)
+data 0                                          // Device Address
+data 0                                          // Memory Address
+
+KernelSize 1024                                 // Bytes
+BootableStorage 64                              // Assumption: First IO device is bootable storage
+
+COMMAND_SHIFT 48
+// IO Commands
+IOStatus 0x1
+IOEnable 0x2
+IODisable 0x3
+IORead 0x4
+IOWrite 0x5
+
+#Boot
+clear r0 #BootedFlag
+load r0 #BootedFlag r16                         // Read booted flag from memory
+jnz r16 #KernelStart
+store r0 #BootedFlag r1                         // Write booted flag to memory
+flush r0 #BootedFlag
+
+// Setup IVT
+loadc #InterruptVectorTable rIVT
+
+// Setup Stack
+loadc #StackStart rSP
+loadc #StackStart rSS
+loadc #StackLimit rSL
+
+#EnableBootableStorage
+loadc #Storage r16                              // Load storage address
+loadc IOEnable r17                              // Load enable command
+loadc COMMAND_SHIFT r18                         // Load shift amount
+leftshift r17 r18 r17                           // Shift command
+store r16 0 r17                                 // Store enable command
+
+flush r16 0                                     // Flush enable command
+
+loadc #LoadMagic r16                            // Load return address
+push r16                                        // Push onto stack
+jump #SignalBootableStorage
+
+#LoadMagic
+loadc #Storage r16                              // Load storage address
+loadc IORead r17                                // Load read command
+loadc COMMAND_SHIFT r18                         // Load shift amount
+leftshift r17 r18 r17                           // Shift command
+loadc 8 r18                                     // Load data size
+or r17 r18 r17                                  // Add parameter to command
+store r16 0 r17                                 // Store read command
+store r16 8 r0                                  // Store device address
+loadc #KernelStart r17                          // Load memory address
+store r16 16 r17                                // Store memory address
+
+flush r16 0                                     // Flush read command
+flush r16 8                                     // Flush device address
+flush r16 16                                    // Flush memory address
+
+loadc #VerifyMagic r16                          // Load return address
+push r16                                        // Push onto stack
+jump #SignalBootableStorage
+
+#VerifyMagic
+load r0 #MagicNumber r16                        // Load expected magic number
+clear r0 #KernelStart
+load r0 #KernelStart r17                        // Load actual magic number
+subtract r17 r16 r18                            // Compare
+jez r18 #MagicVerified
+halt                                            // Stop if magic is incorrect
+#MagicVerified
+
+#LoadKernel
+loadc #Storage r16                              // Load storage address
+loadc IORead r17                                // Load read command
+loadc COMMAND_SHIFT r18                         // Load shift amount
+leftshift r17 r18 r17                           // Shift command
+loadc KernelSize r18                            // Load kernel size
+or r17 r18 r17                                  // Add parameter to command
+store r16 0 r17                                 // Store read command
+loadc #KernelStart r17                          // Load device address
+store r16 8 r17                                 // Store device address
+loadc #KernelStart r17                          // Load memory address
+store r16 16 r17                                // Store memory address
+
+flush r16 0                                     // Flush read command
+flush r16 8                                     // Flush device address
+flush r16 16                                    // Flush memory address
+
+loadc #KernelStart r16                          // Load return address
+push r16                                        // Push onto stack
+
+// Clear Kernel from Cache so next read is from Main Memory where Storage loaded the Kernel
+loadc KernelSize r17                            // Load kernel size as loop counter
+loadc 8 r18                                     // Load data size (64bits = 8bytes)
+#ClearLoop
+subtract r17 r18 r17                            // Reduce loop counter
+add r16 r17 r19
+clear r19 0                                     // Clear kernel from cache
+jle r17 #SignalBootableStorage                  // Loop condition
+jump #ClearLoop                                 // Loop
+
+#SignalBootableStorage
+loadc BootableStorage r16                       // Load bootable storage id
+signal r16                                      // Signal bootable storage
+sleep                                           // Wait for storage signal
+
+align 0x400                                     // Align kernel to 1024byte boundary
+
+#KernelStart
