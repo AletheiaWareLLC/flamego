@@ -25,7 +25,7 @@ func (a *Align) Value() uint64 {
 func (a *Align) EmittedSize() uint32 {
 	v := uint32(a.value)
 	if a.address > v {
-		fmt.Println("Cannot align to smaller address")
+		fmt.Printf("0x%016x Cannot align to smaller address: 0x%016x\n", a.address, a.value)
 	}
 	return v - a.address
 }
