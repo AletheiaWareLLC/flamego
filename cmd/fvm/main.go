@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	bootloader = flag.String("b", "", "The bootloader to load into memory")
-	storage    = flag.String("s", "", "The file to load into storage")
+	memory  = flag.String("m", "", "The file to load into memory")
+	storage = flag.String("s", "", "The file to load into storage")
 )
 
 func main() {
@@ -23,9 +23,9 @@ func main() {
 
 	machine := vm.NewMachine()
 
-	if *bootloader != "" {
-		// Copy bootloader into memory
-		f, err := os.Open(*bootloader)
+	if *memory != "" {
+		// Copy file into memory
+		f, err := os.Open(*memory)
 		if err != nil {
 			log.Fatal(err)
 		}

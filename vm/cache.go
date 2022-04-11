@@ -6,11 +6,15 @@ import (
 )
 
 func NewL1Cache(size int, lower flamego.Store) *Cache {
-	return NewCache(size, flamego.LineWidthL1Cache, flamego.BusSizeL1Cache, flamego.OffsetBitsL1Cache, lower)
+	return NewCache(size, flamego.LineWidthL1Cache, flamego.BusSize, flamego.OffsetBitsL1Cache, lower)
 }
 
 func NewL2Cache(size int, lower flamego.Store) *Cache {
-	return NewCache(size, flamego.LineWidthL2Cache, flamego.BusSizeL2Cache, flamego.OffsetBitsL2Cache, lower)
+	return NewCache(size, flamego.LineWidthL2Cache, flamego.BusSize, flamego.OffsetBitsL2Cache, lower)
+}
+
+func NewL3Cache(size int, lower flamego.Store) *Cache {
+	return NewCache(size, flamego.LineWidthL3Cache, flamego.BusSize, flamego.OffsetBitsL3Cache, lower)
 }
 
 func NewCache(size, lineWidth, busWidth, offsetBits int, lower flamego.Store) *Cache {
@@ -28,7 +32,6 @@ func NewCache(size, lineWidth, busWidth, offsetBits int, lower flamego.Store) *C
 		lineWidth:  lineWidth,
 		lineCount:  lineCount,
 		lines:      lines,
-		busWidth:   busWidth,
 		bus:        NewBus(busWidth),
 		tagBits:    tagBits,
 		indexBits:  indexBits,
@@ -43,7 +46,6 @@ type Cache struct {
 	lineWidth      int
 	lineCount      int
 	lines          []*CacheLine
-	busWidth       int
 	bus            *Bus
 	tagBits        int
 	indexBits      int
@@ -128,57 +130,60 @@ func (c *Cache) Clock(cycle int) {
 		case flamego.CacheRead:
 			if c.lower.IsSuccessful() {
 				tag, index, offset := c.ParseAddress(c.lowerAddress)
-				if offset != 0 {
-					panic("Unaligned Cache Update")
-				}
 				line := c.lines[index]
 				if line.tag != tag {
 					writeback := false
+					start := 0
 					for i := 0; i < c.lineWidth; i++ {
 						if line.IsValid(i) && line.IsDirty(i) {
 							writeback = true
+							start = i
+							break
 						}
 					}
 					if writeback {
-						victim := c.CreateAddress(line.tag, index, 0)
-						// Swap values with values in bus
+						// The cache line is valid and contains some dirty values
+						// The read from lower is now discarded :(
+						// the values in the bus will be overwritten with dirty values from line
+						// and then a write will be issued to lower.
+						// This may repeat until the cache line can be repurposed.
+
+						// align start to data boundary
+						for start%flamego.DataSize != 0 {
+							start--
+						}
+
+						victim := c.CreateAddress(line.tag, index, uint64(start))
+
 						lb := c.lower.Bus()
-						for i := 0; i < c.lineWidth; i++ {
-							n := lb.Read(i) // New
-							nv := lb.IsValid(i)
-							o := line.Read(i) // Old
-							ov := line.IsValid(i)
-							od := line.IsDirty(i)
-							if ov && od {
-								lb.Write(i, o)
+						for i := 0; i < lb.Size() && start < c.lineWidth; i, start = i+1, start+1 {
+							if line.IsValid(start) {
+								lb.Write(i, line.Read(start))
 							} else {
 								lb.SetValid(i, false)
-								lb.SetDirty(i, false)
 							}
-							if nv {
-								line.Write(i, n)
-							} else {
-								line.SetValid(i, false)
-							}
-							line.SetDirty(i, false)
 						}
-						line.tag = tag
 						// Issue a write
 						c.lowerAddress = victim
 						c.lowerOperation = flamego.CacheWrite
 						c.lower.Write(victim)
 						break // Don't free lower
+					} else {
+						// Writeback unnecessary, line can repurposed
+						line.tag = tag
+						for i := 0; i < c.lineWidth; i++ {
+							line.SetValid(i, false)
+						}
 					}
 				}
 				lb := c.lower.Bus()
 				// Copy from lower bus into cache line
-				for i := 0; i < c.lineWidth; i++ {
+				for i, j := 0, int(offset); i < lb.Size() && j < c.lineWidth; i, j = i+1, j+1 {
 					if lb.IsValid(i) {
-						line.Write(i, lb.Read(i))
-						line.SetDirty(i, false)
+						line.Write(j, lb.Read(i))
+						line.SetDirty(j, false)
 					}
 				}
-				line.tag = tag
 			} else {
 				// If lower was unsuccessful it will get retried
 			}
@@ -187,21 +192,17 @@ func (c *Cache) Clock(cycle int) {
 		case flamego.CacheWrite:
 			if c.lower.IsSuccessful() {
 				tag, index, offset := c.ParseAddress(c.lowerAddress)
-				if offset != 0 {
-					panic("Unaligned Cache Update")
-				}
 				line := c.lines[index]
 				if line.tag == tag {
 					lb := c.lower.Bus()
-					for i := 0; i < c.lineWidth; i++ {
-						if line.IsValid(i) && lb.IsValid(i) && line.Read(i) == lb.Read(i) {
-							line.SetDirty(i, false)
+					for i, j := 0, int(offset); i < lb.Size() && j < c.lineWidth; i, j = i+1, j+1 {
+						if line.IsValid(j) && lb.IsValid(i) && line.Read(j) == lb.Read(i) {
+							line.SetDirty(j, false)
 						}
 					}
 				}
 			} else {
-				// TODO what if lower write was unsuccessful?
-				panic("Not Yet Implemented")
+				// If lower was unsuccessful it will get retried
 			}
 			c.lower.Free()
 			c.lowerOperation = flamego.CacheNone
@@ -214,86 +215,78 @@ func (c *Cache) Clock(cycle int) {
 		tag, index, offset := c.ParseAddress(c.address)
 
 		line := c.lines[index]
-		c.isSuccessful = false
-		if line.tag == tag {
-			c.isSuccessful = true
-		}
+		c.isSuccessful = line.tag == tag
 
 		switch c.operation {
 		case flamego.CacheNone:
 			// Do nothing
 		case flamego.CacheRead:
 			// Check all values are valid
-			// Align offset to bus width
-			start := int(offset & (^uint64(c.busWidth - 1)))
-			for i := 0; i < c.busWidth; i++ {
-				if !line.IsValid(i + start) {
+			for i, j := 0, int(offset); i < c.bus.Size() && j < c.lineWidth; i, j = i+1, j+1 {
+				if !line.IsValid(j) {
 					c.isSuccessful = false
 				}
 			}
 			if c.isSuccessful {
 				// Copy values into bus
-				a := int(offset)
-				for i := 0; i < c.busWidth && a < c.lineWidth; i, a = i+1, a+1 {
-					if line.IsValid(a) {
-						c.bus.Write(i, line.Read(a))
-					} else {
-						c.bus.SetValid(i, false)
-					}
+				for i, j := 0, int(offset); i < c.bus.Size() && j < c.lineWidth; i, j = i+1, j+1 {
+					c.bus.Write(i, line.Read(j))
 					c.bus.SetDirty(i, false)
 				}
 			} else {
 				// Issue read request to lower store
-				// Clearing all offset bits read whole aligned line
-				c.lowerRead((c.address >> c.offsetBits) << c.offsetBits)
+				c.lowerRead(c.address)
 			}
 		case flamego.CacheWrite:
 			if c.isSuccessful {
-				a := int(offset)
-				for i := 0; i < c.busWidth && a < c.lineWidth; i, a = i+1, a+1 {
+				for i, j := 0, int(offset); i < c.bus.Size() && j < c.lineWidth; i, j = i+1, j+1 {
 					if !c.bus.IsValid(i) || !c.bus.IsDirty(i) {
 						continue
 					}
 					c.bus.SetDirty(i, false)
-					line.Write(a, c.bus.Read(i))
+					line.Write(j, c.bus.Read(i))
 				}
 			} else {
-				victim := c.CreateAddress(line.tag, index, 0)
 				writeback := false
+				start := 0
 				for i := 0; i < c.lineWidth; i++ {
 					if line.IsValid(i) && line.IsDirty(i) {
 						writeback = true
+						start = i
 						break
 					}
 				}
 				if writeback {
+					// align start to data boundary
+					for start%flamego.DataSize != 0 {
+						start--
+					}
+
+					victim := c.CreateAddress(line.tag, index, uint64(start))
+
 					// Write back to lower
-					c.lowerWrite(victim, line)
+					c.lowerWrite(victim, line, start)
 				} else {
-					// Repurpose line for tag
+					// Writeback unnecessary, line can repurposed
 					line.tag = tag
 					c.isSuccessful = true
-					a := int(offset)
-					for i := 0; i < a; i++ {
+					for i := 0; i < c.lineWidth; i++ {
 						line.SetValid(i, false)
 						line.SetDirty(i, false)
 					}
-					for i := 0; i < c.busWidth && a < c.lineWidth; i, a = i+1, a+1 {
+					for i, j := 0, int(offset); i < c.bus.Size() && j < c.lineWidth; i, j = i+1, j+1 {
 						if !c.bus.IsValid(i) || !c.bus.IsDirty(i) {
-							line.SetValid(i, false)
-							line.SetDirty(i, false)
 							continue
 						}
+						line.Write(j, c.bus.Read(i))
 						c.bus.SetDirty(i, false)
-						line.Write(a, c.bus.Read(i))
 					}
 				}
 			}
 		case flamego.CacheClear:
 			if c.isSuccessful {
-				a := int(offset)
-				for i := 0; i < flamego.DataSize && a < c.lineWidth; i, a = i+1, a+1 {
-					line.SetValid(a, false)
+				for i, j := 0, int(offset); i < c.bus.Size() && j < c.lineWidth; i, j = i+1, j+1 {
+					line.SetValid(j, false)
 				}
 			}
 			c.isSuccessful = true
@@ -301,17 +294,17 @@ func (c *Cache) Clock(cycle int) {
 			if c.isSuccessful {
 				// Only flush if any of the data is dirty
 				c.isSuccessful = false
-				a := int(offset)
-				for i := 0; i < flamego.DataSize && a < c.lineWidth; i, a = i+1, a+1 {
-					if line.IsValid(a) && line.IsDirty(a) {
+				for i, j := 0, int(offset); i < c.bus.Size() && j < c.lineWidth; i, j = i+1, j+1 {
+					if line.IsValid(j) && line.IsDirty(j) {
 						c.isSuccessful = true
 					}
 				}
 			}
 			if c.isSuccessful {
 				// Issue write request to lower store
-				// Clearing all offset bits to flush whole aligned line
-				c.isSuccessful = c.lowerWrite((c.address>>c.offsetBits)<<c.offsetBits, line)
+				c.lowerWrite(c.address, line, int(offset))
+				// Cache still contains dirty data until the lower store write is successful
+				c.isSuccessful = false
 			} else {
 				// Cache doesn't contain the data for the given address, so nothing to flush, success!
 				c.isSuccessful = true
@@ -380,39 +373,29 @@ func (c *Cache) Flush(address uint64) {
 	c.address = address
 }
 
-func (c *Cache) lowerRead(address uint64) bool {
+func (c *Cache) lowerRead(address uint64) {
 	if !c.lower.IsBusy() && c.lower.IsFree() {
 		c.lowerAddress = address
 		c.lowerOperation = flamego.CacheRead
 		c.lower.Read(address)
-		return true
 	}
-	return false
 }
 
-func (c *Cache) lowerWrite(address uint64, line *CacheLine) bool {
+func (c *Cache) lowerWrite(address uint64, line *CacheLine, offset int) {
 	if !c.lower.IsBusy() && c.lower.IsFree() {
 		c.lowerAddress = address
 		c.lowerOperation = flamego.CacheWrite
 		// Copy values into bus
 		lb := c.lower.Bus()
-		i := 0
-		for ; i < lb.Size() && i < c.lineWidth; i++ {
-			if line.IsValid(i) && line.IsDirty(i) {
-				lb.Write(i, line.Read(i))
+		for i := 0; i < lb.Size() && offset < c.lineWidth; i, offset = i+1, offset+1 {
+			if line.IsValid(offset) && line.IsDirty(offset) {
+				lb.Write(i, line.Read(offset))
 			} else {
 				lb.SetValid(i, false)
-				lb.SetDirty(i, false)
 			}
 		}
-		for ; i < c.lineWidth; i++ {
-			lb.SetValid(i, false)
-			lb.SetDirty(i, false)
-		}
 		c.lower.Write(address)
-		return true
 	}
-	return false
 }
 
 func (c *Cache) ParseAddress(a uint64) (uint64, uint64, uint64) {

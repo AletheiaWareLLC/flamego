@@ -8,8 +8,7 @@ type Core interface {
 	Id() int
 	Processor() Processor
 	Context(int) Context
-	InstructionCache() Cache
-	DataCache() Cache
+	Cache() Cache
 
 	AddContext(Context)
 

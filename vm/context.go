@@ -6,10 +6,12 @@ import (
 	"encoding/binary"
 )
 
-func NewContext(id int, c *Core) *Context {
+func NewContext(id int, c *Core, l1ICache flamego.Cache, l1DCache flamego.Cache) *Context {
 	return &Context{
 		id:            id,
 		core:          c,
+		iCache:        l1ICache,
+		dCache:        l1DCache,
 		status:        "asleep",
 		isAsleep:      true,
 		nextInterrupt: -1,
@@ -19,6 +21,8 @@ func NewContext(id int, c *Core) *Context {
 type Context struct {
 	id        int
 	core      *Core
+	iCache    flamego.Cache
+	dCache    flamego.Cache
 	registers [flamego.RegisterCount]uint64
 
 	status        string
@@ -29,6 +33,7 @@ type Context struct {
 	nextInterrupt flamego.InterruptValue
 	isSignalled   bool
 	isRetrying    bool
+	isAligned     bool
 	requiresLock  bool
 	acquiredLock  bool
 
@@ -43,6 +48,14 @@ func (x *Context) Id() int {
 
 func (x *Context) Core() flamego.Core {
 	return x.core
+}
+
+func (x *Context) InstructionCache() flamego.Cache {
+	return x.iCache
+}
+
+func (x *Context) DataCache() flamego.Cache {
+	return x.dCache
 }
 
 func (x *Context) Status() string {
@@ -98,6 +111,10 @@ func (x *Context) IsRetrying() bool {
 	return x.isRetrying
 }
 
+func (x *Context) IsAligned() bool {
+	return x.isAligned
+}
+
 func (x *Context) Opcode() uint32 {
 	return x.opcode
 }
@@ -148,11 +165,23 @@ func (x *Context) FetchInstruction() {
 				return
 			}
 		}
-		is := x.core.InstructionCache()
+		if pc%flamego.InstructionSize != 0 {
+			x.Error(flamego.InterruptProgramAccessError)
+			x.isValid = false
+			return
+		}
+		is := x.iCache
 		if is.IsBusy() || !is.IsFree() {
 			x.status = "cache busy"
 			x.isValid = false
 		} else {
+			if pc%flamego.DataSize == 0 {
+				x.isAligned = true
+			} else {
+				x.isAligned = false
+				// Always read in multiples of DataSize
+				pc -= flamego.InstructionSize
+			}
 			is.Read(pc)
 			x.status = "fetched instruction"
 		}
@@ -176,18 +205,22 @@ func (x *Context) LoadInstruction() {
 		x.opcode = isa.Encode(isa.NewInterrupt(x.nextInterrupt))
 		x.nextInterrupt = -1
 	} else {
-		is := x.core.InstructionCache()
+		is := x.iCache
 		if is.IsBusy() {
 			x.status = "cache busy"
 			x.isValid = false
 		} else {
 			if is.IsSuccessful() {
 				bus := is.Bus()
+				offset := 0
+				if !x.isAligned {
+					offset += flamego.InstructionSize
+				}
 				x.opcode = binary.BigEndian.Uint32([]byte{
-					bus.Read(0),
-					bus.Read(1),
-					bus.Read(2),
-					bus.Read(3),
+					bus.Read(offset + 0),
+					bus.Read(offset + 1),
+					bus.Read(offset + 2),
+					bus.Read(offset + 3),
 				})
 				x.status = "loaded instruction"
 			} else {

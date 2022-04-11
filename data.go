@@ -12,6 +12,7 @@ const (
 
 	// Unit: Bytes
 	SizeMemory  = 1 * MB //1 * GB
-	SizeL2Cache = 8 * MB
-	SizeL1Cache = 256 * KB
+	SizeL3Cache = 1 * MB
+	SizeL2Cache = 32 * KB
+	SizeL1Cache = 1 * KB
 )

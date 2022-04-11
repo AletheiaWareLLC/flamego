@@ -2,9 +2,7 @@ package flamego
 
 const (
 	// Unit: Bytes
-	BusSizeL1Cache = 8
-	BusSizeL2Cache = 64
-	BusSizeMemory  = 512
+	BusSize = 8
 )
 
 type Bus interface {

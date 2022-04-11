@@ -11,8 +11,10 @@ type Flush struct {
 	success         bool
 	issuedL1D       bool
 	issuedL2        bool
+	issuedL3        bool
 	flushedL1D      bool
 	flushedL2       bool
+	flushedL3       bool
 }
 
 func NewFlush(a flamego.Register, o uint32) *Flush {
@@ -34,7 +36,7 @@ func (i *Flush) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 func (i *Flush) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 	address := a + b
 	if !i.issuedL1D {
-		l1d := x.Core().DataCache()
+		l1d := x.DataCache()
 		if l1d.IsBusy() || !l1d.IsFree() {
 			i.success = false // Cache Unavailable
 			return 0, 0
@@ -43,8 +45,8 @@ func (i *Flush) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 		// Issue Flush Request
 		l1d.Flush(address)
 		i.issuedL1D = true
-	} else if !i.issuedL2 {
-		l2 := x.Core().Processor().Cache()
+	} else if !i.issuedL2 && i.flushedL1D {
+		l2 := x.Core().Cache()
 		if l2.IsBusy() || !l2.IsFree() {
 			i.success = false // Cache Unavailable
 			return 0, 0
@@ -53,6 +55,16 @@ func (i *Flush) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 		// Issue Flush Request
 		l2.Flush(address)
 		i.issuedL2 = true
+	} else if !i.issuedL3 && i.flushedL2 {
+		l3 := x.Core().Processor().Cache()
+		if l3.IsBusy() || !l3.IsFree() {
+			i.success = false // Cache Unavailable
+			return 0, 0
+		}
+
+		// Issue Flush Request
+		l3.Flush(address)
+		i.issuedL3 = true
 	}
 	return 0, 0
 }
@@ -62,7 +74,7 @@ func (i *Flush) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 		return 0, 0
 	}
 	if !i.flushedL1D {
-		l1d := x.Core().DataCache()
+		l1d := x.DataCache()
 		if l1d.IsBusy() {
 			i.success = false
 		} else if !l1d.IsSuccessful() {
@@ -74,7 +86,7 @@ func (i *Flush) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 			l1d.Free() // Free Cache
 		}
 	} else if !i.flushedL2 {
-		l2 := x.Core().Processor().Cache()
+		l2 := x.Core().Cache()
 		if l2.IsBusy() {
 			i.success = false
 		} else if !l2.IsSuccessful() {
@@ -85,6 +97,18 @@ func (i *Flush) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 			i.flushedL2 = true
 			l2.Free() // Free Cache
 		}
+	} else if !i.flushedL3 {
+		l3 := x.Core().Processor().Cache()
+		if l3.IsBusy() {
+			i.success = false
+		} else if !l3.IsSuccessful() {
+			i.success = false
+			i.issuedL3 = false // Reissue Request
+			l3.Free()          // Free Cache
+		} else {
+			i.flushedL3 = true
+			l3.Free() // Free Cache
+		}
 	}
 	return 0, 0
 }
@@ -94,7 +118,7 @@ func (i *Flush) Store(x flamego.Context, a, b uint64) {
 }
 
 func (i *Flush) Retire(x flamego.Context) bool {
-	if i.success && i.flushedL1D && i.flushedL2 {
+	if i.success && i.flushedL1D && i.flushedL2 && i.flushedL3 {
 		x.IncrementProgramCounter()
 		return true
 	}

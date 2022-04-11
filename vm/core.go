@@ -4,12 +4,11 @@ import (
 	"aletheiaware.com/flamego"
 )
 
-func NewCore(id int, processor flamego.Processor, l1ICache flamego.Cache, l1DCache flamego.Cache) *Core {
+func NewCore(id int, processor flamego.Processor, cache flamego.Cache) *Core {
 	return &Core{
 		id:         id,
 		processor:  processor,
-		iCache:     l1ICache,
-		dCache:     l1DCache,
+		cache:      cache,
 		lockHolder: -1,
 	}
 }
@@ -17,8 +16,7 @@ func NewCore(id int, processor flamego.Processor, l1ICache flamego.Cache, l1DCac
 type Core struct {
 	id        int
 	processor flamego.Processor
-	iCache    flamego.Cache
-	dCache    flamego.Cache
+	cache     flamego.Cache
 	contexts  []flamego.Context
 
 	next         int
@@ -73,12 +71,8 @@ func (c *Core) SetAcquiredLock(acquired bool) {
 	c.acquiredLock = acquired
 }
 
-func (c *Core) InstructionCache() flamego.Cache {
-	return c.iCache
-}
-
-func (c *Core) DataCache() flamego.Cache {
-	return c.dCache
+func (c *Core) Cache() flamego.Cache {
+	return c.cache
 }
 
 func (c *Core) LoadRegister0() uint64 {
@@ -114,9 +108,16 @@ func (c *Core) FormatRegister1() uint64 {
 }
 
 func (c *Core) Clock(cycle int) {
+	// L2 Caches are 10 times slower
+	if cycle%10 == 0 {
+		c.cache.Clock(cycle / 10)
+	}
+
 	// Clock L1 Caches
-	c.iCache.Clock(cycle)
-	c.dCache.Clock(cycle)
+	for _, c := range c.contexts {
+		c.InstructionCache().Clock(cycle)
+		c.DataCache().Clock(cycle)
+	}
 
 	// Run the pipeline in reverse so data flow in intermediate registers are not affected.
 	c.context(7).RetireInstruction()

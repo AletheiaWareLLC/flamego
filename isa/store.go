@@ -35,7 +35,7 @@ func (i *Store) Load(x flamego.Context) (uint64, uint64, uint64, uint64) {
 
 func (i *Store) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 	if !i.issued {
-		l1d := x.Core().DataCache()
+		l1d := x.DataCache()
 		if l1d.IsBusy() || !l1d.IsFree() {
 			i.success = false // Cache Unavailable
 			return 0, 0
@@ -57,7 +57,7 @@ func (i *Store) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 	if !i.success {
 		return 0, 0
 	}
-	l1d := x.Core().DataCache()
+	l1d := x.DataCache()
 	if l1d.IsBusy() {
 		i.success = false
 	} else if !l1d.IsSuccessful() {

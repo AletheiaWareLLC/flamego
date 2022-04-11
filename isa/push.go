@@ -46,7 +46,7 @@ func (i *Push) Execute(x flamego.Context, a, b, c, d uint64) (uint64, uint64) {
 		x.Error(flamego.InterruptStackOverflowError)
 		i.success = false
 	} else if !i.issued {
-		l1d := x.Core().DataCache()
+		l1d := x.DataCache()
 		if l1d.IsBusy() || !l1d.IsFree() {
 			i.success = false // Cache Unavailable
 			return 0, 0
@@ -68,7 +68,7 @@ func (i *Push) Format(x flamego.Context, a, b uint64) (uint64, uint64) {
 	if !i.success {
 		return 0, 0
 	}
-	l1d := x.Core().DataCache()
+	l1d := x.DataCache()
 	if l1d.IsBusy() {
 		i.success = false
 	} else if !l1d.IsSuccessful() {

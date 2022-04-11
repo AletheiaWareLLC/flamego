@@ -6,6 +6,8 @@ type Context interface {
 	Id() int
 
 	Core() Core
+	InstructionCache() Cache
+	DataCache() Cache
 
 	IsValid() bool
 	IsAsleep() bool

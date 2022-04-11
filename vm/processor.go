@@ -69,14 +69,14 @@ func (p *Processor) Signal(device int) {
 }
 
 func (p *Processor) Clock(cycle int) {
-	// Main Memory is 100 times slower
-	if cycle%100 == 0 {
-		p.memory.Clock(cycle / 100)
+	// Main Memory is 1000 times slower
+	if cycle%1000 == 0 {
+		p.memory.Clock(cycle / 1000)
 	}
 
-	// L2 Caches are 10 times slower
-	if cycle%10 == 0 {
-		p.cache.Clock(cycle / 10)
+	// L3 Caches are 100 times slower
+	if cycle%100 == 0 {
+		p.cache.Clock(cycle / 100)
 	}
 
 	// Clock Each Core
@@ -84,10 +84,10 @@ func (p *Processor) Clock(cycle int) {
 		c.Clock(cycle)
 	}
 
-	// IO Devices are 500 times slower
-	if cycle%500 == 0 {
+	// IO Devices are 5000 times slower
+	if cycle%5000 == 0 {
 		for _, d := range p.devices {
-			d.Clock(cycle / 500)
+			d.Clock(cycle / 5000)
 		}
 	}
 

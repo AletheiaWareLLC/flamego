@@ -78,6 +78,15 @@ func TestCache_Read_withEviction(t *testing.T) {
 	cache.Clock(0)
 	assert.True(t, memory.IsFree()) // Cache should have freed memory
 
+	// Another cache read request will also miss,
+	assertCacheReadMiss(t, cache, address)
+
+	// and the data is fetched from the memory,
+	assertLowerRead(t, cache, memory, address)
+
+	cache.Clock(0)
+	assert.True(t, memory.IsFree()) // Cache should have freed memory
+
 	// Cache should contain data after reading from memory
 	assertCacheReadHit(t, cache, address, data[address:address+BusSize])
 }
@@ -191,13 +200,13 @@ func TestCache_Clear(t *testing.T) {
 	assert.True(t, cache.IsFree())
 
 	// Clear should always hit, even if it the data wasn't in the cache
-	assertCacheClear(t, cache, address)
+	assertCacheClearHit(t, cache, address)
 
 	// Write stale data to cache
 	assertCacheWriteHit(t, cache, address, stale)
 
 	// Clear stale data from cache
-	assertCacheClear(t, cache, address)
+	assertCacheClearHit(t, cache, address)
 
 	// Cache shouldn't contain data
 	assertCacheReadMiss(t, cache, address)
@@ -225,14 +234,14 @@ func TestCache_Flush(t *testing.T) {
 	assert.False(t, cache.IsBusy())
 	assert.True(t, cache.IsFree())
 
-	// Flush should always hit, even if it the data wasn't in the cache
-	assertCacheFlush(t, cache, address)
+	// Flush should hit if the data wasn't in the cache
+	assertCacheFlushHit(t, cache, address)
 
 	// Write data to cache
 	assertCacheWriteHit(t, cache, address, data)
 
-	// Flush data from cache
-	assertCacheFlush(t, cache, address)
+	// Flush data from cache should miss until lower write was successful
+	assertCacheFlushMiss(t, cache, address)
 
 	// Ensure data was written to memory
 	memory.Clock(0)
@@ -253,35 +262,51 @@ func TestCache_Flush(t *testing.T) {
 		assert.False(t, line.IsDirty(j))
 		assert.Equal(t, b, line.Read(j))
 	}
+
+	// Flush should hit if the data in the cache is clean
+	assertCacheFlushHit(t, cache, address)
 }
 
 func TestCache_Address(t *testing.T) {
 	address := uint64(0xab54a98ceb1f0ad2)
 
 	memory := vm.NewMemory(flamego.SizeMemory)
-	l2Cache := vm.NewL2Cache(flamego.SizeL2Cache, memory)
+	l3Cache := vm.NewL3Cache(flamego.SizeL3Cache, memory)
+	l2Cache := vm.NewL2Cache(flamego.SizeL2Cache, l3Cache)
 	l1Cache := vm.NewL1Cache(flamego.SizeL1Cache, l2Cache)
+
+	assert.Equal(t, flamego.SizeL3Cache, l3Cache.Size())
+	assert.Equal(t, flamego.LineWidthL3Cache, l3Cache.LineWidth())
+	assert.Equal(t, 44, l3Cache.TagBits())
+	assert.Equal(t, 8, l3Cache.IndexBits())
+	assert.Equal(t, 12, l3Cache.OffsetBits())
+	tag, index, offset := l3Cache.ParseAddress(address)
+	assert.Equal(t, uint64(0xab54a98ceb1), tag)
+	assert.Equal(t, uint64(0xf0), index)
+	assert.Equal(t, uint64(0xad2), offset)
+
+	assert.Equal(t, address, l3Cache.CreateAddress(tag, index, offset))
 
 	assert.Equal(t, flamego.SizeL2Cache, l2Cache.Size())
 	assert.Equal(t, flamego.LineWidthL2Cache, l2Cache.LineWidth())
-	assert.Equal(t, 41, l2Cache.TagBits())
-	assert.Equal(t, 14, l2Cache.IndexBits())
+	assert.Equal(t, 49, l2Cache.TagBits())
+	assert.Equal(t, 6, l2Cache.IndexBits())
 	assert.Equal(t, 9, l2Cache.OffsetBits())
-	tag, index, offset := l2Cache.ParseAddress(address)
-	assert.Equal(t, uint64(0x156a95319d6), tag)
-	assert.Equal(t, uint64(0xf85), index)
+	tag, index, offset = l2Cache.ParseAddress(address)
+	assert.Equal(t, uint64(0x156a95319d63e), tag)
+	assert.Equal(t, uint64(0x5), index)
 	assert.Equal(t, uint64(0xd2), offset)
 
 	assert.Equal(t, address, l2Cache.CreateAddress(tag, index, offset))
 
 	assert.Equal(t, flamego.SizeL1Cache, l1Cache.Size())
 	assert.Equal(t, flamego.LineWidthL1Cache, l1Cache.LineWidth())
-	assert.Equal(t, 46, l1Cache.TagBits())
-	assert.Equal(t, 12, l1Cache.IndexBits())
+	assert.Equal(t, 54, l1Cache.TagBits())
+	assert.Equal(t, 4, l1Cache.IndexBits())
 	assert.Equal(t, 6, l1Cache.OffsetBits())
 	tag, index, offset = l1Cache.ParseAddress(address)
-	assert.Equal(t, uint64(0x2ad52a633ac7), tag)
-	assert.Equal(t, uint64(0xc2b), index)
+	assert.Equal(t, uint64(0x2ad52a633ac7c2), tag)
+	assert.Equal(t, uint64(0xb), index)
 	assert.Equal(t, uint64(0x12), offset)
 
 	assert.Equal(t, address, l1Cache.CreateAddress(tag, index, offset))
@@ -417,7 +442,7 @@ func assertCacheWriteHit(t *testing.T, cache *vm.Cache, address uint64, data []b
 	}
 }
 
-func assertCacheClear(t *testing.T, cache *vm.Cache, address uint64) {
+func assertCacheClearHit(t *testing.T, cache *vm.Cache, address uint64) {
 	t.Helper()
 
 	cache.Clear(address)
@@ -432,7 +457,7 @@ func assertCacheClear(t *testing.T, cache *vm.Cache, address uint64) {
 	assert.True(t, cache.IsSuccessful()) // Data was cleared
 }
 
-func assertCacheFlush(t *testing.T, cache *vm.Cache, address uint64) {
+func assertCacheFlushHit(t *testing.T, cache *vm.Cache, address uint64) {
 	t.Helper()
 
 	cache.Flush(address)
@@ -445,4 +470,19 @@ func assertCacheFlush(t *testing.T, cache *vm.Cache, address uint64) {
 	assert.False(t, cache.IsBusy())
 	assert.False(t, cache.IsFree())      // Cache has not yet been released
 	assert.True(t, cache.IsSuccessful()) // Data was flushed
+}
+
+func assertCacheFlushMiss(t *testing.T, cache *vm.Cache, address uint64) {
+	t.Helper()
+
+	cache.Flush(address)
+	assert.True(t, cache.IsBusy())
+	assert.False(t, cache.IsFree())
+	assert.Equal(t, address, cache.Address())
+	assert.Equal(t, flamego.CacheFlush, cache.Operation())
+
+	cache.Clock(0)
+	assert.False(t, cache.IsBusy())
+	assert.False(t, cache.IsFree())       // Cache has not yet been released
+	assert.False(t, cache.IsSuccessful()) // Data is still being flushed
 }

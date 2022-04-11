@@ -33,10 +33,12 @@ const (
 	// Unit: Bytes
 	LineWidthL1Cache = 64
 	LineWidthL2Cache = 512
+	LineWidthL3Cache = 4096
 
 	// Unit: Bits
 	OffsetBitsL1Cache = 6
 	OffsetBitsL2Cache = 9
+	OffsetBitsL3Cache = 12
 )
 
 type Cache interface {
