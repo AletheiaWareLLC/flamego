@@ -46,5 +46,5 @@ func (i *LeftShift) Retire(x flamego.Context) bool {
 }
 
 func (i *LeftShift) String() string {
-	return fmt.Sprintf("lshift %s %s %s", i.Source1Register, i.Source2Register, i.DestinationRegister)
+	return fmt.Sprintf("leftshift %s %s %s", i.Source1Register, i.Source2Register, i.DestinationRegister)
 }
