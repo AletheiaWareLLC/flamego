@@ -77,8 +77,9 @@ func (l *lexer) Read(r io.Reader) (int64, error) {
 		}
 	}
 	if current != "" {
-		t := l.token(current)
-		l.tokens = append(l.tokens, t)
+		if t := l.token(current); t != nil {
+			l.tokens = append(l.tokens, t)
+		}
 	}
 	l.tokens = append(l.tokens, NewToken(CategoryEOF))
 	return count, nil
